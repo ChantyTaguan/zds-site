@@ -24,6 +24,7 @@ from zds.gallery.models import Image, Gallery
 from zds.utils import slugify, get_current_user
 from zds.utils.models import SubCategory, Licence, Comment
 from zds.utils.tutorials import get_blob, export_tutorial
+from zds.tutorial.managers import TutorialManager
 
 
 TYPE_CHOICES = (
@@ -110,6 +111,8 @@ class Tutorial(models.Model):
                                   verbose_name='Derniere note')
     is_locked = models.BooleanField('Est verrouillé', default=False)
     js_support = models.BooleanField('Support du Javascript', default=False)
+
+    objects = TutorialManager()
 
     def __unicode__(self):
         return self.title

@@ -353,11 +353,13 @@ ZDS_APP = {
     },
     'article': {
         'repo_path': os.path.join(SITE_ROOT, 'articles-data'),
+        'articles_member_detail': 5,
     },
     'tutorial': {
         'repo_path': os.path.join(SITE_ROOT, 'tutoriels-private'),
         'repo_public_path': os.path.join(SITE_ROOT, 'tutoriels-public'),
-        'default_license_pk': 7
+        'default_license_pk': 7,
+        'tutorials_member_detail': 5,
     },
     'forum': {
         'posts_per_page': 21,
@@ -368,6 +370,7 @@ ZDS_APP = {
         'beta_forum_id': 1,
         'max_post_length': 1000000,
         'top_tag_max': 5,
+        'topics_member_detail': 5,
     }
 }
 
