@@ -171,6 +171,8 @@ INSTALLED_APPS = (
     'munin',
     'social.apps.django_app.default',
     'rest_framework',
+    'provider',
+    'provider.oauth2',
 
     # Apps DB tables are created in THIS order by default
     # --> Order is CRITICAL to properly handle foreign keys
@@ -210,7 +212,10 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-    ]
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.OAuth2Authentication',
+    )
 }
 
 if (DEBUG):
