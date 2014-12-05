@@ -83,6 +83,7 @@ urlpatterns = patterns('',
                        url(r'^rechercher/', include('zds.search.urls')),
                        url(r'^munin/', include('zds.munin.urls')),
                        ('^munin/', include('munin.urls')),
+                       url(r'^oauth2/', include('provider.oauth2.urls', namespace='oauth2')),
 
                        url(r'^$', 'zds.pages.views.home'),
 
