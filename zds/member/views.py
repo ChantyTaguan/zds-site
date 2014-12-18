@@ -11,10 +11,9 @@ from django.contrib.auth.models import User, Group
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.core.mail import EmailMultiAlternatives
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.core.urlresolvers import reverse, reverse_lazy
+from django.core.urlresolvers import reverse
 from django.db import transaction
-from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect, get_object_or_404
 from django.template import Context
 from django.template.loader import get_template
@@ -22,7 +21,6 @@ from django.views.decorators.http import require_POST
 from zds.utils.models import Comment
 from zds.mp.models import PrivatePost, PrivateTopic
 from zds.gallery.models import UserGallery
-import json
 
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
@@ -35,7 +33,6 @@ from zds.member.decorator import can_write_and_read_now
 from zds.tutorial.models import Tutorial
 from zds.utils import render_template
 from zds.utils.mps import send_mp
-from zds.utils.paginator import paginator_range
 from zds.utils.tokens import generate_token
 from django.utils.translation import ugettext as _
 
