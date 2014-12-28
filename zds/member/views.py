@@ -11,10 +11,9 @@ from django.contrib.auth.models import User, Group
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.core.mail import EmailMultiAlternatives
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.core.urlresolvers import reverse, reverse_lazy
+from django.core.urlresolvers import reverse
 from django.db import transaction
-from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect, get_object_or_404
 from django.template import Context
 from django.template.loader import get_template
@@ -22,7 +21,6 @@ from django.views.decorators.http import require_POST
 from zds.utils.models import Comment
 from zds.mp.models import PrivatePost, PrivateTopic
 from zds.gallery.models import UserGallery
-import json
 
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
@@ -35,11 +33,10 @@ from zds.member.decorator import can_write_and_read_now
 from zds.tutorial.models import Tutorial
 from zds.utils import render_template
 from zds.utils.mps import send_mp
-from zds.utils.paginator import paginator_range
 from zds.utils.tokens import generate_token
 from django.utils.translation import ugettext as _
 
-from django.views.generic import ListView, DetailView, UpdateView
+from django.views.generic import ListView, DetailView, UpdateView, CreateView
 
 
 class MemberList(ListView):
@@ -193,49 +190,82 @@ class UpdateUsernameEmailMember(UpdateMember):
         profile = self.get_object();
         return profile.get_absolute_url()
 
-def index(request):
-    """Displays the list of registered users."""
 
-    if request.is_ajax():
-        q = request.GET.get('q', '')
-        if request.user.is_authenticated():
-            members = User.objects.filter(username__icontains=q).exclude(pk=request.user.pk)[:20]
+class RegisterView(CreateView):
+    """Create a profile."""
+    form_class = RegisterForm
+    template_name = 'member/register/index.html'
+
+    def get_object(self):
+        return get_object_or_404(Profile, user=self.request.user)
+
+    def get_form(self, form_class):
+        return RegisterForm()
+
+    def post(self, request, *args, **kwargs):
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            return self.form_valid(request, form)
         else:
-            members = User.objects.filter(username__icontains=q)[:20]
-        results = []
-        for member in members:
-            member_json = {}
-            member_json['id'] = member.pk
-            member_json['label'] = member.username
-            member_json['value'] = member.username
-            results.append(member_json)
-        data = json.dumps(results)
+            return render_template(self.template_name, {"form": form})
 
-        mimetype = "application/json"
+    def form_valid(self, request, form):
+        profile = self.create_profile(form, request)
+        self.save_profile(profile)
+        token = self.generate_token(profile.user)
+        self.send_email(token, profile.user)
 
-        return HttpResponse(data, mimetype)
+        return render_template(self.get_success_url())
 
-    else:
-        members = User.objects.order_by("-date_joined")
-        # Paginator
+    def create_profile(self, form, request):
+        username = form.data["username"]
+        email = form.data["email"]
+        password = form.data["password"]
+        user = User.objects.create_user(username, email, password)
+        user.is_active = False
+        user.backend = "django.contrib.auth.backends.ModelBackend"
+        profile = Profile(user=user,
+                          show_email=False,
+                          show_sign=True,
+                          hover_or_click=True,
+                          email_for_answer=False)
+        profile.last_ip_address = get_client_ip(request)
+        return profile
 
-        paginator = Paginator(members, settings.ZDS_APP['member']['members_per_page'])
-        page = request.GET.get("page")
+    def save_profile(self, profile):
+        profile.save()
+        profile.user.save()
+
+    def generate_token(self, user):
+        uuid_token = str(uuid.uuid4())
+        date_end = datetime.now() + timedelta(days=0,
+                                              hours=1,
+                                              minutes=0,
+                                              seconds=0)
+        token = TokenRegister(user=user,
+                              token=uuid_token,
+                              date_end=date_end)
+        token.save()
+        return token
+
+    def send_email(self, token, user):
+        subject = _(u"{} - Confirmation d'inscription").format(settings.ZDS_APP['site']['abbr'])
+        from_email = "{} <{}>".format(settings.ZDS_APP['site']['litteral_name'],
+                                      settings.ZDS_APP['site']['email_noreply'])
+        message_html = get_template("email/register/confirm.html").render(Context(
+            {"username": user.username, "url": settings.ZDS_APP['site']['url'] + token.get_absolute_url()}))
+        message_txt = get_template("email/register/confirm.txt") .render(Context(
+            {"username": user.username, "url": settings.ZDS_APP['site']['url'] + token.get_absolute_url()}))
+        msg = EmailMultiAlternatives(subject, message_txt, from_email,
+                                     [user.email])
+        msg.attach_alternative(message_html, "text/html")
         try:
-            shown_members = paginator.page(page)
-            page = int(page)
-        except PageNotAnInteger:
-            shown_members = paginator.page(1)
-            page = 1
-        except EmptyPage:
-            shown_members = paginator.page(paginator.num_pages)
-            page = paginator.num_pages
-        return render_template("member/index.html", {
-            "members": shown_members,
-            "count": members.count(),
-            "pages": paginator_range(page, paginator.num_pages),
-            "nb": page,
-        })
+            msg.send()
+        except:
+            pass
+
+    def get_success_url(self):
+        return "member/register/success.html"
 
 
 @login_required
@@ -536,132 +566,6 @@ def settings_mini_profile(request, user_name):
         return render_template("member/settings/profile.html", c)
 
 
-@can_write_and_read_now
-@login_required
-def settings_profile(request):
-    """User's settings about his personal information."""
-
-    # extra information about the current user
-
-    profile = request.user.profile
-    if request.method == "POST":
-        form = ProfileForm(request.POST)
-        c = {"form": form}
-        if form.is_valid():
-            profile.biography = form.data["biography"]
-            profile.site = form.data["site"]
-            profile.show_email = "show_email" \
-                in form.cleaned_data.get("options")
-            profile.show_sign = "show_sign" in form.cleaned_data.get("options")
-            profile.hover_or_click = "hover_or_click" \
-                in form.cleaned_data.get("options")
-            profile.email_for_answer = "email_for_answer" \
-                in form.cleaned_data.get("options")
-            profile.avatar_url = form.data["avatar_url"]
-            profile.sign = form.data["sign"]
-
-            # Save the profile and redirect the user to the configuration space
-            # with message indicate the state of the operation
-
-            try:
-                profile.save()
-            except:
-                messages.error(request, _(u"Une erreur est survenue."))
-                return redirect(reverse("zds.member.views.settings_profile"))
-            messages.success(request,
-                             _(u"Le profil a correctement été mis à jour."))
-            return redirect(reverse("zds.member.views.settings_profile"))
-        else:
-            return render_template("member/settings/profile.html", c)
-    else:
-        form = ProfileForm(initial={
-            "biography": profile.biography,
-            "site": profile.site,
-            "avatar_url": profile.avatar_url,
-            "show_email": profile.show_email,
-            "show_sign": profile.show_sign,
-            "hover_or_click": profile.hover_or_click,
-            "email_for_answer": profile.email_for_answer,
-            "sign": profile.sign,
-        })
-        c = {"form": form}
-        return render_template("member/settings/profile.html", c)
-
-
-@can_write_and_read_now
-@login_required
-@require_POST
-def update_avatar(request):
-    """
-    Update avatar from gallery.
-    Specific method instead using settings_profile() to avoid to handle all required fields.
-    """
-    profile = request.user.profile
-    form = ImageAsAvatarForm(request.POST)
-    if form.is_valid():
-        profile.avatar_url = form.data["avatar_url"]
-        try:
-            profile.save()
-        except:
-            messages.error(request, _(u"Une erreur est survenue."))
-            return redirect(reverse("zds.member.views.settings_profile"))
-        messages.success(request, _(u"L'avatar a correctement été mis à jour."))
-
-    return redirect(reverse("member-detail",
-                            args=[profile.user.username]))
-
-
-@can_write_and_read_now
-@login_required
-def settings_account(request):
-    """User's settings about his account."""
-
-    if request.method == "POST":
-        form = ChangePasswordForm(request.user, request.POST)
-        c = {"form": form}
-        if form.is_valid():
-            try:
-                request.user.set_password(form.data["password_new"])
-                request.user.save()
-                messages.success(request, _(u"Le mot de passe a bien été modifié.")
-                                 )
-                return redirect(reverse("update-password-member"))
-            except:
-                messages.error(request, _(u"Une erreur est survenue."))
-                return redirect(reverse("update-password-member"))
-        else:
-            return render_template("member/settings/account.html", c)
-    else:
-        form = ChangePasswordForm(request.user)
-        c = {"form": form}
-        return render_template("member/settings/account.html", c)
-
-
-@can_write_and_read_now
-@login_required
-def settings_user(request):
-    """User's settings about his email."""
-
-    if request.method == "POST":
-        form = ChangeUserForm(request.POST)
-        c = {"form": form}
-        if form.is_valid():
-            old = User.objects.filter(pk=request.user.pk).all()[0]
-            if form.data["username_new"]:
-                old.username = form.data["username_new"]
-            elif form.data["email_new"]:
-                if form.data["email_new"].strip() != "":
-                    old.email = form.data["email_new"]
-            old.save()
-            return redirect(old.profile.get_absolute_url())
-        else:
-            return render_template("member/settings/user.html", c)
-    else:
-        form = ChangeUserForm()
-        c = {"form": form}
-        return render_template("member/settings/user.html", c)
-
-
 def login_view(request):
     """Log in user."""
 
@@ -730,55 +634,6 @@ def logout_view(request):
     logout(request)
     request.session.clear()
     return redirect(reverse("zds.pages.views.home"))
-
-
-def register_view(request):
-    """Register a new user."""
-
-    if request.method == "POST":
-        form = RegisterForm(request.POST)
-        if form.is_valid():
-            data = form.data
-            user = User.objects.create_user(data["username"], data["email"],
-                                            data["password"])
-            user.is_active = False
-            user.save()
-            profile = Profile(user=user, show_email=False, show_sign=True,
-                              hover_or_click=True, email_for_answer=False)
-            profile.last_ip_address = get_client_ip(request)
-            profile.save()
-            user.backend = "django.contrib.auth.backends.ModelBackend"
-
-            # Generate a valid token during one hour.
-
-            uuid_token = str(uuid.uuid4())
-            date_end = datetime.now() + timedelta(days=0, hours=1, minutes=0,
-                                                  seconds=0)
-            token = TokenRegister(user=user, token=uuid_token,
-                                  date_end=date_end)
-            token.save()
-
-            # send email
-
-            subject = _(u"{} - Confirmation d'inscription").format(settings.ZDS_APP['site']['abbr'])
-            from_email = "{} <{}>".format(settings.ZDS_APP['site']['litteral_name'],
-                                          settings.ZDS_APP['site']['email_noreply'])
-            message_html = get_template("email/register/confirm.html").render(Context(
-                {"username": user.username, "url": settings.ZDS_APP['site']['url'] + token.get_absolute_url()}))
-            message_txt = get_template("email/register/confirm.txt") .render(Context(
-                {"username": user.username, "url": settings.ZDS_APP['site']['url'] + token.get_absolute_url()}))
-            msg = EmailMultiAlternatives(subject, message_txt, from_email,
-                                         [user.email])
-            msg.attach_alternative(message_html, "text/html")
-            try:
-                msg.send()
-            except:
-                msg = None
-            return render_template("member/register/success.html", {})
-        else:
-            return render_template("member/register/index.html", {"form": form})
-    form = RegisterForm()
-    return render_template("member/register/index.html", {"form": form})
 
 
 def forgot_password(request):
