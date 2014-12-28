@@ -84,7 +84,7 @@ class UpdateMember(UpdateView):
     def get_form(self, form_class):
         profile = self.get_object()
 
-        return ProfileForm(initial={
+        return form_class(initial={
             "biography": profile.biography,
             "site": profile.site,
             "avatar_url": profile.avatar_url,
@@ -96,11 +96,11 @@ class UpdateMember(UpdateView):
             })
 
     def post(self, request, *args, **kwargs):
-        form = ProfileForm(request.POST)
+        form = self.form_class(request.POST)
         if form.is_valid():
             return self.form_valid(request, form)
         else:
-            return self.form_invalid(form)
+            return render_template(self.template_name, {"form": form})
 
     def form_valid(self, request, form):
         profile = self.get_object()
@@ -144,13 +144,14 @@ class UpdateMember(UpdateView):
 
 
 class UpdateAvatarMember(UpdateMember):
+    form_class = ImageAsAvatarForm
 
     def get_success_url(self):
         profile = self.get_object()
         return reverse("member-detail", args=[profile.user.username])
 
     def get_form(self, form_class):
-        return ImageAsAvatarForm(self.request.POST)
+        return form_class(self.request.POST)
 
     def update_profile(self, profile, form):
         profile.avatar_url = form.data["avatar_url"]
@@ -160,9 +161,10 @@ class UpdateAvatarMember(UpdateMember):
 
 
 class UpdatePasswordMember(UpdateMember):
+    form_class = ChangePasswordForm
 
     def get_form(self, form_class):
-        return ChangePasswordForm(self.request.user, self.request.POST)
+        return form_class(self.request.user, self.request.POST)
 
     def update_profile(self, profile, form):
         profile.user.set_password(form.data["password_new"])
@@ -175,16 +177,10 @@ class UpdatePasswordMember(UpdateMember):
 
 
 class UpdateUsernameEmailMember(UpdateMember):
-
-    def post(self, request, *args, **kwargs):
-        form = ChangeUserForm(request.POST)
-        if form.is_valid():
-            return self.form_valid(request, form)
-        else:
-            return render_template(self.template_name, {"form": form})
+    form_class = ChangeUserForm
 
     def get_form(self, form_class):
-        return ChangeUserForm(self.request.POST)
+        return form_class(self.request.POST)
 
     def update_profile(self, profile, form):
         if form.data["username_new"]:
