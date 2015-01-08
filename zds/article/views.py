@@ -718,9 +718,13 @@ def modify(request):
 
             author_username = request.POST['author']
             author = None
+
             try:
-                author = User.objects.get(username=author_username)
+                author = User.objects.get(username=author_username.strip())
             except User.DoesNotExist:
+                messages.error(request,
+                                u'L\'auteur {0} n\'a pas pu être ajouté à la rédaction '
+                                u'du tutoriel car il n\'existe pas...').format(author_username)
                 return redirect(redirect_url)
 
             article.authors.add(author)

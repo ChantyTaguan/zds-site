@@ -577,7 +577,7 @@ def modify_tutorial(request):
             except User.DoesNotExist:
                 messages.error(request,
                                _(u'L\'auteur {0} n\'a pas pu être ajouté à la rédaction '
-                                 u'du tutoriel car il n\'existe pas...').format(request.POST["author"]))
+                                 u'du tutoriel car il n\'existe pas...').format(author_username))
                 return redirect(redirect_url)
             tutorial.authors.add(author)
             tutorial.save()
