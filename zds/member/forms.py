@@ -169,9 +169,6 @@ class RegisterForm(forms.Form, ProfileUsernameValidator, ProfileEmailValidator):
 
         return cleaned_data
 
-    def result(self, result=None):
-        return result
-
     def throw_error(self, key=None, message=None):
         self._errors[key] = self.error_class([message])
 
@@ -344,9 +341,6 @@ class ChangeUserForm(forms.Form, ProfileUsernameValidator, ProfileEmailValidator
             self.validate_email(email_new)
 
         return cleaned_data
-
-    def result(self, result=None):
-        return result
 
     def throw_error(self, key=None, message=None):
         self._errors[key] = self.error_class([message])
