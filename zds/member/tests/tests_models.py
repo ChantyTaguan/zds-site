@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import os
+ import os
 import shutil
 
 from datetime import datetime
@@ -25,7 +25,7 @@ from zds.settings import SITE_ROOT
 @override_settings(REPO_PATH=os.path.join(SITE_ROOT, 'tutoriels-private-test'))
 @override_settings(REPO_PATH_PROD=os.path.join(SITE_ROOT, 'tutoriels-public-test'))
 @override_settings(REPO_ARTICLE_PATH=os.path.join(SITE_ROOT, 'articles-data-test'))
-class TestProfile(TestCase):
+class MemberModelsTest(TestCase):
 
     def setUp(self):
         self.user1 = ProfileFactory()
@@ -36,13 +36,11 @@ class TestProfile(TestCase):
         self.forum = ForumFactory(category=self.forumcat)
         self.forumtopic = TopicFactory(forum=self.forum, author=self.staff.user)
 
-    def test_unicode(self):
+    def test_unicode_of_username(self):
         self.assertEqual(self.user1.__unicode__(), self.user1.user.username)
 
-    def test_get_absolute_url(self):
+    def test_get_absolute_url_for_details_of_member(self):
         self.assertEqual(self.user1.get_absolute_url(), '/membres/voir/{0}/'.format(self.user1.user.username))
-
-    # def test_get_city(self):
 
     def test_get_avatar_url(self):
         # if no url was specified -> gravatar !
@@ -288,13 +286,3 @@ class TestTokenRegister(TestCase):
 
     def test_unicode(self):
         self.assertEqual(self.token.__unicode__(), '{0} - {1}'.format(self.user1.user.username, self.token.date_end))
-
-
-# class TestBan(TestCase):
-# nothing to test !
-
-
-# class TestDivers(TestCase):
-    # logout_user
-    # listing
-    # get_info_old_tuto
