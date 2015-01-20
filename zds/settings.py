@@ -171,6 +171,7 @@ INSTALLED_APPS = (
     'munin',
     'social.apps.django_app.default',
     'rest_framework',
+    'rest_framework_swagger',
     'provider',
     'provider.oauth2',
 
