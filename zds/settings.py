@@ -236,6 +236,9 @@ REST_FRAMEWORK_EXTENSIONS = {
     # is specified here in seconds.
     'DEFAULT_CACHE_RESPONSE_TIMEOUT': 60 * 15
 }
+SWAGGER_SETTINGS = {
+    'template_path': 'pages/swagger.html'
+}
 
 if (DEBUG):
     INSTALLED_APPS += (
