@@ -470,6 +470,7 @@ def mark_read(topic):
 
 
 def follow(topic, user=None):
+    from zds.notification.models import Subscription
     """
     Toggle following of a topic for an user.
     :param topic: A topic.
@@ -479,14 +480,14 @@ def follow(topic, user=None):
     if user is None:
         user = get_current_user()
     try:
-        existing = TopicFollowed.objects.get(topic=topic, user=user)
-    except TopicFollowed.DoesNotExist:
+        existing = Subscription.objects.get(content_object=topic, user=user)
+    except Subscription.DoesNotExist:
         existing = None
 
     if not existing:
         # Make the user follow the topic
-        topic_followed = TopicFollowed(topic=topic, user=user)
-        topic_followed.save()
+        subscription = Subscription(content_object=topic, user=user)
+        subscription.save()
         return True
 
     # If user is already following the topic, we make him don't anymore

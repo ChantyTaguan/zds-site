@@ -14,6 +14,7 @@ from django.views.generic.detail import SingleObjectMixin
 from zds import settings
 from zds.forum.models import Topic, Post, follow, TopicRead
 from zds.member.views import get_client_ip
+from zds.notification.models import send_notification
 from zds.utils.mixins import QuoteMixin
 
 
@@ -108,6 +109,8 @@ def send_post(request, topic, author, text, send_by_mail=False,):
 
     topic.last_message = post
     topic.save()
+
+    send_notification('NEW_CONTENT', content_subscription=topic, content_notification=post)
 
     # Send mail
     if send_by_mail:
