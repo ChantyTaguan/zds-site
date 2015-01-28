@@ -29,6 +29,7 @@ from models import Category, Forum, Topic, Post, follow, follow_by_email, never_
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
+from zds.notification.models import send_notification
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -517,11 +518,15 @@ def answer(request):
                 post.save()
                 g_topic.last_message = post
                 g_topic.save()
+
+                send_notification('NEW_CONTENT', content_subscription=g_topic, content_notification=post)
+
                 # Send mail
                 subject = u"{} - Notification : {}".format(settings.ZDS_APP['site']['abbr'],
                                                            g_topic.title)
                 from_email = "{0} <{1}>".format(settings.ZDS_APP['site']['litteral_name'],
                                                 settings.ZDS_APP['site']['email_noreply'])
+
                 followers = g_topic.get_followers_by_email()
                 for follower in followers:
                     receiver = follower.user
