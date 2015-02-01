@@ -26,12 +26,12 @@ class Subscription(models.Model):
         max_length=10,
         choices=TYPE_CHOICES,
         default='NEW_CONTENT', db_index=True)
-    is_active = models.BooleanField('Actif', default=False, db_index=True)
+    is_active = models.BooleanField('Actif', default=True, db_index=True)
     by_email = models.BooleanField('Recevoir un email', default=False)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    last_notification = models.ForeignKey('Notification', related_name="last_notification", default=None)
+    last_notification = models.ForeignKey('Notification', related_name="last_notification", null=True, default=None)
 
     def __unicode__(self):
         return u'<Abonnement du membre "{0}" aux notifications ' \
