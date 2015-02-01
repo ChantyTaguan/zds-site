@@ -13,11 +13,11 @@ class Migration(SchemaMigration):
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('profile', self.gf('django.db.models.fields.related.ForeignKey')(related_name='subscriptor', to=orm['member.Profile'])),
             ('type', self.gf('django.db.models.fields.CharField')(default='NEW_CONTENT', max_length=10, db_index=True)),
-            ('is_active', self.gf('django.db.models.fields.BooleanField')(default=False, db_index=True)),
+            ('is_active', self.gf('django.db.models.fields.BooleanField')(default=True, db_index=True)),
             ('by_email', self.gf('django.db.models.fields.BooleanField')(default=False)),
             ('content_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['contenttypes.ContentType'])),
             ('object_id', self.gf('django.db.models.fields.PositiveIntegerField')()),
-            ('last_notification', self.gf('django.db.models.fields.related.ForeignKey')(default=None, related_name='last_notification', to=orm['notification.Notification'])),
+            ('last_notification', self.gf('django.db.models.fields.related.ForeignKey')(default=None, null=True, related_name='last_notification', to=orm['notification.Notification'])),
         ))
         db.send_create_signal(u'notification', ['Subscription'])
 
