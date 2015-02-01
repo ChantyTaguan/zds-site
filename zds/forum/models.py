@@ -478,7 +478,7 @@ def follow(topic, user=None):
         user = get_current_user()
     try:
         existing = Subscription.objects.get(
-            content_object=topic, user=user
+            object_id=topic.pk, content_type=content_type, profile=user.profile
         )
     except Subscription.DoesNotExist:
         existing = None
@@ -487,7 +487,7 @@ def follow(topic, user=None):
         # Make the user follow the topic
         t = Subscription(
             content_object=topic,
-            user=user
+            profile=user.profile
         )
         t.save()
         ret = True
