@@ -780,22 +780,16 @@ class LeaveViewTest(TestCase):
     def test_denies_anonymous(self):
 
         self.client.logout()
-        response = self.client.get(reverse('zds.mp.views.leave'), follow=True)
+        response = self.client.get(reverse('mp-delete', args=[1]), follow=True)
 
         self.assertRedirects(
             response,
             reverse('zds.member.views.login_view') +
-            '?next=' + urllib.quote(reverse('zds.mp.views.leave'), ''))
+            '?next=' + urllib.quote(reverse('mp-delete', args=[1]), ''))
 
     def test_fail_leave_topic_no_exist(self):
 
-        response = self.client.post(
-            reverse('zds.mp.views.leave'),
-            {
-                'leave': '',
-                'topic_pk': '9999'
-            }
-        )
+        response = self.client.post(reverse('mp-delete', args=[999]))
 
         self.assertEqual(404, response.status_code)
 
@@ -804,14 +798,7 @@ class LeaveViewTest(TestCase):
         self.topic1.participants.clear()
         self.topic1.save()
 
-        response = self.client.post(
-            reverse('zds.mp.views.leave'),
-            {
-                'leave': '',
-                'topic_pk': self.topic1.pk
-            },
-            follow=True
-        )
+        response = self.client.post(reverse('mp-delete', args=[self.topic1.pk]), follow=True)
 
         self.assertEqual(200, response.status_code)
         self.assertEqual(
@@ -821,14 +808,7 @@ class LeaveViewTest(TestCase):
 
     def test_success_leave_topic_as_author(self):
 
-        response = self.client.post(
-            reverse('zds.mp.views.leave'),
-            {
-                'leave': '',
-                'topic_pk': self.topic1.pk
-            },
-            follow=True
-        )
+        response = self.client.post(reverse('mp-delete', args=[self.topic1.pk]), follow=True)
 
         self.assertEqual(200, response.status_code)
         self.assertEqual(
@@ -851,14 +831,7 @@ class LeaveViewTest(TestCase):
             )
         )
 
-        response = self.client.post(
-            reverse('zds.mp.views.leave'),
-            {
-                'leave': '',
-                'topic_pk': self.topic1.pk
-            },
-            follow=True
-        )
+        response = self.client.post(reverse('mp-delete', args=[self.topic1.pk]), follow=True)
 
         self.assertEqual(200, response.status_code)
 
