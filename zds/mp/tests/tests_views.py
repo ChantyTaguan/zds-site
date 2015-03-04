@@ -434,58 +434,35 @@ class AnswerViewTest(TestCase):
     def test_denies_anonymous(self):
 
         self.client.logout()
-        response = self.client.get(reverse('zds.mp.views.answer'), follow=True)
+        response = self.client.get(reverse('posts-private-new', args=[1]), follow=True)
 
         self.assertRedirects(
             response,
             reverse('zds.member.views.login_view') +
-            '?next=' + urllib.quote(reverse('zds.mp.views.answer'), ''))
+            '?next=' + urllib.quote(reverse('posts-private-new', args=[1]), ''))
 
     def test_fail_answer_not_send_topic_pk(self):
 
-        response = self.client.post(
-            reverse('zds.mp.views.answer'),
-            {}
-        )
+        response = self.client.post(reverse('posts-private-new', args=[999]))
 
         self.assertEqual(404, response.status_code)
 
     def test_fail_answer_topic_no_exist(self):
 
-        response = self.client.post(
-            reverse('zds.mp.views.answer') + '?sujet=156',
-            {}
-        )
+        response = self.client.post(reverse('posts-private-new', args=[156]))
 
         self.assertEqual(404, response.status_code)
 
     def test_fail_cite_post_no_exist(self):
 
-        response = self.client.get(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(self.topic1.pk) +
-            '&cite=4864',
-            {}
-        )
+        response = self.client.get(reverse('posts-private-new', args=[self.topic1.pk]) + '&cite=4864')
 
         self.assertEqual(404, response.status_code)
-
-    def test_success_cite_post(self):
-
-        response = self.client.get(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(self.topic1.pk) +
-            '&cite=' + str(self.post1.pk),
-            {}
-        )
-
-        self.assertEqual(200, response.status_code)
 
     def test_success_preview_answer(self):
 
         response = self.client.post(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(self.topic1.pk),
+            reverse('posts-private-new', args=[self.topic1.pk]),
             {
                 'text': 'answer',
                 'preview': '',
@@ -499,8 +476,7 @@ class AnswerViewTest(TestCase):
     def test_success_answer(self):
 
         response = self.client.post(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(self.topic1.pk),
+            reverse('posts-private-new', args=[self.topic1.pk]),
             {
                 'text': 'answer',
                 'last_post': self.topic1.last_message.pk
@@ -522,8 +498,7 @@ class AnswerViewTest(TestCase):
         )
 
         response = self.client.post(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(self.topic1.pk),
+            reverse('posts-private-new', args=[self.topic1.pk]),
             {
                 'text': 'answer',
                 'last_post': self.topic1.last_message.pk
@@ -545,8 +520,7 @@ class AnswerViewTest(TestCase):
             position_in_topic=1)
 
         response = self.client.post(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(unicode_topic.pk),
+            reverse('posts-private-new', args=[unicode_topic.pk]),
             {
                 'text': 'answer',
                 'last_post': unicode_post.pk
@@ -566,8 +540,7 @@ class AnswerViewTest(TestCase):
             position_in_topic=1)
 
         response = self.client.post(
-            reverse('zds.mp.views.answer') +
-            '?sujet=' + str(unicode_topic.pk),
+            reverse('posts-private-new', args=[unicode_topic.pk]),
             {
                 'text': 'answer',
                 'last_post': unicode_post.pk
