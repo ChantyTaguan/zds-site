@@ -29,7 +29,7 @@ from models import Category, Forum, Topic, Post, follow, follow_by_email, never_
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import send_notification, Subscription, mark_notification_read
+from zds.notification.models import Subscription, mark_notification_read
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
