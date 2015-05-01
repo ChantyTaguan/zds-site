@@ -328,10 +328,10 @@
 
                                 {# NOTIFICATIONS #}
                                 <div>
-                                    {% with unread_posts=user|interventions_topics %}
+                                    {% with unread_notifications=user|notifications %}
                                         <a href="{% url "zds.forum.views.followed_topics" %}" class="ico-link">
-                                            {% if unread_posts|length > 0 %}
-                                                <span class="notif-count">{{ unread_posts|length }}</span>
+                                            {% if unread_notifications|length > 0 %}
+                                                <span class="notif-count">{{ unread_notifications|length }}</span>
                                             {% endif %}
                                             <span class="notif-text ico ico-notifs">{% trans "Notifications" %}</span>
                                         </a>
@@ -340,15 +340,15 @@
                                             <span class="dropdown-title">{% trans "Notifications" %}</span>
 
                                             <ul class="dropdown-list">
-                                                {% for first_unread in unread_posts %}
+                                                {% for first_unread in unread_notifications %}
                                                     <li>
-                                                        <a href="{{ first_unread.url }}">
-                                                            {% with p=first_unread.author.profile %}
+                                                        <a href="{{ first_unread|notif_url }}">
+                                                            {% with p=first_unread|notif_author_profile %}
                                                                 <img src="{{ p.get_avatar_url  }}" alt="" class="avatar">
                                                             {% endwith %}
-                                                            <span class="username">{{ first_unread.author.username }}</span>
+                                                            <span class="username">{{ first_unread|notif_username }}</span>
                                                             <span class="date">{{ first_unread.pubdate|format_date:True|capfirst }}</span>
-                                                            <span class="topic">{{ first_unread.title }}</span>
+                                                            <span class="topic">{{ first_unread|notif_title }}</span>
                                                         </a>
                                                     </li>
                                                 {% endfor %}

@@ -24,6 +24,7 @@ from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
+from zds.notification.models import mark_notification_read
 from zds.utils import slugify
 from zds.utils.forums import create_topic, send_post, CreatePostView
 from zds.utils.mixins import FilterMixin
@@ -128,6 +129,7 @@ class TopicPostsListView(ZdSPagingListView, SingleObjectMixin):
         if self.request.user.is_authenticated():
             if never_read(self.object):
                 mark_read(self.object)
+                mark_notification_read(self.object)
         return context
 
     def get_object(self, queryset=None):
