@@ -59,9 +59,8 @@ class Notification(models.Model):
     is_read = models.BooleanField('Lue', default=False, db_index=True)
 
     def __unicode__(self):
-        return u'Notification du membre "{0}" à propos de : {1} #{2}'.format(self.subscription.profile,
-                                                                             self.content_type,
-                                                                             self.content_object.pk)
+        return u'Notification du membre "{0}" à propos de : {1} #{2}'\
+            .format(self.subscription.profile, self.content_type, self.content_object.pk)
 
     def get_author(self):
         return self.content_object.author
@@ -78,13 +77,14 @@ class Notification(models.Model):
             return self.subscription.type
 
 
-def send_notification(type_notif, content_subscription=None, content_notification=None, action_by=None):
-    if content_notification is None and type_notif != 'PING':
+def send_notification(content_subscription, content_notification, action_by=None, type_notification='NEW_CONTENT'):
+    if content_subscription is None:
         return
-    else:
+    elif content_subscription is not None:
         content_subscription_type = ContentType.objects.get_for_model(content_subscription)
-        subscription_list = Subscription.objects.filter(object_id=content_subscription.pk,
-                                                        content_type__pk=content_subscription_type.pk, is_active=True)
+        subscription_list = Subscription.objects\
+            .filter(object_id=content_subscription.pk, content_type__pk=content_subscription_type.pk,
+                    is_active=True, type=type_notification)
         for subscription in subscription_list:
             if (action_by is not None and action_by == subscription.profile.user) \
                     or (subscription.last_notification is not None and not subscription.last_notification.is_read):
@@ -92,39 +92,60 @@ def send_notification(type_notif, content_subscription=None, content_notificatio
             else:
                 notification = Notification(subscription=subscription, content_object=content_notification)
                 notification.save()
-                subscription.last_notification=notification;
+                subscription.last_notification=notification
                 subscription.save()
                 # if subscription.by_email:
 
 
-def activate_subscription(user, content_subscription):
-        """create a subscription if it does not exists, activate the existing subscription if it's not active"""
+def activate_subscription(content_subscription, user=None, type_subscription=None):
+    """create a subscription if it does not exists, activate the existing subscription if it's not active"""
 
-        content_type = ContentType(content_subscription).pk
+    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
 
-        if user is None:
-            user = get_current_user()
-        try:
-            existing = Subscription.objects.get(
-                object_id=content_subscription.pk, content_type=content_type, profile=user.profile
-            )
-        except Subscription.DoesNotExist:
-            existing = None
+    if type_subscription is None:
+        type_subscription = 'NEW_CONTENT'
+    if user is None:
+        user = get_current_user()
+    try:
+        existing = Subscription.objects.get(object_id=content_subscription.pk,
+                                            content_type__pk=content_subscription_type.pk,
+                                            profile=user.profile, type=type_subscription)
+    except Subscription.DoesNotExist:
+        existing = None
 
-        if not existing:
-            # Make the user follow the topic
-            t = Subscription(
-                content_object=content_subscription,
-                profile=user.profile
+    if not existing:
+        # Make the user follow the topic
+        t = Subscription(
+            content_object=content_subscription,
+            profile=user.profile,
+            type=type_subscription
+        )
 
-            )
-            t.save()
-        else:
-            # Activate the existing subscription if it is inactive
-            if not existing.is_active:
-                existing.is_active = True;
-                existing.save()
-        return
+        t.save()
+    else:
+        # Activate the existing subscription if it is inactive
+        if not existing.is_active:
+            existing.is_active = True
+            existing.save()
+
+
+def deactivate_subscription(content_subscription, user=None, type_subscription=None):
+    """Deactivate the subscription if it does exists and is active"""
+
+    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
+
+    if type_subscription is None:
+        type_subscription = 'NEW_CONTENT'
+    if user is None:
+        user = get_current_user()
+    try:
+        existing = Subscription.objects.get(object_id=content_subscription.pk,
+                                            content_type__pk=content_subscription_type.pk,
+                                            profile=user.profile, type=type_subscription, is_active=True)
+        existing.is_active = False
+        existing.save()
+    except Subscription.DoesNotExist:
+        existing = None
 
 
 def mark_notification_read(content_subscription):
@@ -136,3 +157,19 @@ def mark_notification_read(content_subscription):
     for notification in n:
         notification.is_read = True
         notification.save()
+
+
+def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT'):
+    if user is None:
+        user = get_current_user()
+
+    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
+
+    try:
+        existing = Subscription.objects.get(object_id=content_subscription.pk,
+                                            content_type__pk=content_subscription_type.pk,
+                                            profile=user.profile, type=type_subscription)
+    except Subscription.DoesNotExist:
+        existing = None
+
+    return existing is not None

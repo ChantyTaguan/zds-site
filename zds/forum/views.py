@@ -24,7 +24,7 @@ from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
-from zds.notification.models import mark_notification_read
+from zds.notification.models import mark_notification_read, activate_subscription, deactivate_subscription
 from zds.utils import slugify
 from zds.utils.forums import create_topic, send_post, CreatePostView
 from zds.utils.mixins import FilterMixin
@@ -258,7 +258,12 @@ class TopicEdit(UpdateView, SingleObjectMixin, TopicEditMixin):
 
         response = {}
         if 'follow' in request.POST:
-            response['follow'] = self.perform_follow(self.object, request.user)
+            if request.POST.get('follow') == "1":
+                activate_subscription(self.object)
+                response['follow'] = -1
+            else:
+                deactivate_subscription(self.object)
+                response['follow'] = 1
         elif 'email' in request.POST:
             response['email'] = self.perform_follow_by_email(self.object, request.user)
         elif 'solved' in request.POST:

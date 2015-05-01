@@ -3,7 +3,6 @@
 import json
 
 from datetime import datetime
-from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import render, render_to_response
@@ -13,9 +12,9 @@ from django.views.generic import CreateView
 from django.views.generic.detail import SingleObjectMixin
 
 from zds import settings
-from zds.forum.models import Topic, Post, follow, TopicRead
+from zds.forum.models import Topic, Post, TopicRead
 from zds.member.views import get_client_ip
-from zds.notification.models import send_notification, activate_subscription, Subscription
+from zds.notification.models import send_notification, activate_subscription
 from zds.utils.mixins import QuoteMixin
 
 
@@ -111,8 +110,8 @@ def send_post(request, topic, author, text, send_by_mail=False,):
     topic.last_message = post
     topic.save()
 
-    activate_subscription(topic, user=author)
-    send_notification('NEW_CONTENT', content_subscription=topic, content_notification=post, action_by=author)
+    activate_subscription(topic, user=author, type='NEW_CONTENT')
+    send_notification(content_subscription=topic, content_notification=post, action_by=post.author, type_notification='NEW_CONTENT')
 
     # Send mail
     if send_by_mail:
@@ -145,11 +144,7 @@ def send_post(request, topic, author, text, send_by_mail=False,):
                 msg.send()
 
     # Follow topic on answering
-    if not Subscription.objects.filter(object_id=topic.pk,
-                                       content_type=ContentType(topic).pk,
-                                       is_active=True,
-                                       profile=request.user.profile).exists():
-        follow(topic)
+    activate_subscription(topic)
 
     return topic
 

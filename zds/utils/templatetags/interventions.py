@@ -4,12 +4,13 @@ from datetime import datetime, timedelta
 import time
 
 from django import template
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 
 from zds.article.models import Reaction, ArticleRead
 from zds.forum.models import TopicFollowed, never_read as never_read_topic, Post, TopicRead
 from zds.mp.models import PrivateTopic
-from zds.notification.models import Notification
+from zds.notification.models import Notification, has_subscribed
 from zds.tutorial.models import Note, TutorialRead
 from zds.utils.models import Alert
 
@@ -92,6 +93,18 @@ def notif_username(notification):
 @register.filter('notif_url')
 def notif_url(notification):
     return notification.get_url()
+
+@register.filter('has_subscribed_new')
+def has_subscribed_new(content_subscription):
+    return has_subscribed(content_subscription)
+
+@register.filter('has_subscribed_update')
+def has_subscribed_update(content_subscription):
+    return has_subscribed(content_subscription, type_subscription='UPDATE')
+
+@register.filter('from_topic')
+def from_topic(notification):
+    return notification.subscription.content_type.model == 'topic'
 
 @register.filter('interventions_topics')
 def interventions_topics(user):

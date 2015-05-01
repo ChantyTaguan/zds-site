@@ -1,0 +1,33 @@
+{% extends "notification/base.html" %}
+{% load i18n %}
+
+
+{% block title %}
+    {% trans "Notifications" %}
+{% endblock %}
+
+
+
+{% block breadcrumb %}
+    <li>{% trans "Notifications" %}</li>
+{% endblock %}
+
+
+
+{% block headline %}
+    {% trans "Notifications" %}
+{% endblock %}
+
+
+
+{% block content %}
+    {% include "misc/pagination.part.html" with position="top" %}
+
+	<div class="topic-list navigable-list">
+	    {% for notification in notifications %}
+	        {% include "notification/includes/notification_row.part.html" %}
+	    {% endfor %}
+    </div>
+
+    {% include "misc/pagination.part.html" with position="bottom" %}
+{% endblock %}
