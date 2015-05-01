@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic.detail import SingleObjectMixin
 from zds.forum.models import Forum, TopicFollowed, follow, follow_by_email, Post, TopicRead
 from django.utils.translation import ugettext as _
+from zds.notification.models import get_subscribers, deactivate_subscription
 from zds.utils.forums import get_tag_by_title
 from zds.utils.models import Alert, CommentLike, CommentDislike
 
@@ -64,10 +65,10 @@ class TopicEditMixin(object):
 
             # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
             # This avoids unreachable notifications.
-            followers = TopicFollowed.objects.filter(topic=topic)
+            followers = get_subscribers(topic)
             for follower in followers:
-                if not forum.can_read(follower.user):
-                    follower.delete()
+                if not forum.can_read(follower):
+                    deactivate_subscription(topic, follower)
             messages.success(request,
                              _(u"Le sujet « {0} » a bien été déplacé dans « {1} ».").format(topic.title, forum.title))
         else:

@@ -13,18 +13,21 @@ from django.db import transaction
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import redirect, get_object_or_404, render, render_to_response
 from django.utils.decorators import method_decorator
-from django.utils.translation import ugettext_lazy as _
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_GET
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
-from haystack.inputs import AutoQuery
-from haystack.query import SearchQuerySet
 
 from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
 from zds.notification.models import mark_notification_read, activate_subscription, deactivate_subscription
+from django.views.decorators.http import require_POST
+from django.utils.translation import ugettext_lazy as _
+
+from haystack.inputs import AutoQuery
+from haystack.query import SearchQuerySet
+
 from zds.utils import slugify
 from zds.utils.forums import create_topic, send_post, CreatePostView
 from zds.utils.mixins import FilterMixin

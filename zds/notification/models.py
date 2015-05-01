@@ -1,8 +1,13 @@
 # coding: utf-8
+from django.conf import settings
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.generic import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.mail import EmailMultiAlternatives
 
 from django.db import models
+from django.template.loader import render_to_string
+from sphinx.locale import _
 from zds.member.models import Profile
 from zds.utils import get_current_user
 
@@ -94,7 +99,30 @@ def send_notification(content_subscription, content_notification, action_by=None
                 notification.save()
                 subscription.last_notification=notification
                 subscription.save()
-                # if subscription.by_email:
+                if subscription.by_email:
+                    subject = u"{} - {} : {}".format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
+                    from_email = "{} <{}>".format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
+
+                    receiver = subscription.profile.user
+                    context = {
+                        'username': receiver.username,
+                        'title': notification.get_title(),
+                        'url': settings.ZDS_APP['site']['url'] + notification.get_url(),
+                        'author': notification.get_author().user.username,
+                        'site_name': settings.ZDS_APP['site']['litteral_name']
+                    }
+                    message_html = render_to_string(
+                        'email/notification/'
+                        + subscription.type.lower()
+                        + '/' + content_subscription_type.model + '.html', context)
+                    message_txt = render_to_string(
+                        'email/notification/'
+                        + subscription.type.lower()
+                        + '/' + content_subscription_type.model + '.txt', context)
+
+                    msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
+                    msg.attach_alternative(message_html, "text/html")
+                    msg.send()
 
 
 def activate_subscription(content_subscription, user=None, type_subscription=None):
@@ -129,13 +157,11 @@ def activate_subscription(content_subscription, user=None, type_subscription=Non
             existing.save()
 
 
-def deactivate_subscription(content_subscription, user=None, type_subscription=None):
+def deactivate_subscription(content_subscription, user=None, type_subscription='NEW_CONTENT'):
     """Deactivate the subscription if it does exists and is active"""
 
     content_subscription_type = ContentType.objects.get_for_model(content_subscription)
 
-    if type_subscription is None:
-        type_subscription = 'NEW_CONTENT'
     if user is None:
         user = get_current_user()
     try:
@@ -159,7 +185,7 @@ def mark_notification_read(content_subscription):
         notification.save()
 
 
-def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT'):
+def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT', only_by_email=False):
     if user is None:
         user = get_current_user()
 
@@ -172,4 +198,30 @@ def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTE
     except Subscription.DoesNotExist:
         existing = None
 
-    return existing is not None
+    res = existing is not None
+
+    # if I'm only interested by the email subscription
+    if res and only_by_email:
+        res = existing.by_email
+
+    return res
+
+
+def get_subscribers(content_subscription, type_subscription='NEW_CONTENT', only_by_email=False):
+    users = []
+    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
+
+    if only_by_email:
+        # if I'm only interested by the email subscription
+        p = Profile.objects.filter(
+            subscription__object_id=content_subscription.pk, subscription__content_type__pk=content_subscription_type.pk,
+            subscription__is_active=True, type=type_subscription, by_email=True).distinct().all()
+    else:
+        p = Profile.objects.filter(
+            subscription__object_id=content_subscription.pk, subscription__content_type__pk=content_subscription_type.pk,
+            subscription__is_active=True, type=type_subscription).distinct().all()
+
+    for profile in p:
+        users.append(profile.user)
+    return users
+

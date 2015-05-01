@@ -111,37 +111,8 @@ def send_post(request, topic, author, text, send_by_mail=False,):
     topic.save()
 
     activate_subscription(topic, user=author, type='NEW_CONTENT')
-    send_notification(content_subscription=topic, content_notification=post, action_by=post.author, type_notification='NEW_CONTENT')
-
-    # Send mail
-    if send_by_mail:
-        subject = u"{} - {} : {}".format(settings.ZDS_APP['site']['litteral_name'], _(u'Forum'), topic.title)
-        from_email = "{} <{}>".format(settings.ZDS_APP['site']['litteral_name'],
-                                      settings.ZDS_APP['site']['email_noreply'])
-
-        followers = topic.get_followers_by_email()
-        for follower in followers:
-            receiver = follower.user
-            if receiver == post.author:
-                continue
-            last_read = TopicRead.objects.filter(
-                topic=topic,
-                post__position=post.position - 1,
-                user=receiver).count()
-            if last_read > 0:
-                context = {
-                    'username': receiver.username,
-                    'title': topic.title,
-                    'url': settings.ZDS_APP['site']['url'] + post.get_absolute_url(),
-                    'author': post.author.username,
-                    'site_name': settings.ZDS_APP['site']['litteral_name']
-                }
-                message_html = render_to_string('email/forum/new_post.html', context)
-                message_txt = render_to_string('email/forum/new_post.txt', context)
-
-                msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
-                msg.attach_alternative(message_html, "text/html")
-                msg.send()
+    send_notification(content_subscription=topic, content_notification=post,
+                      action_by=post.author, type_notification='NEW_CONTENT')
 
     # Follow topic on answering
     activate_subscription(topic)
