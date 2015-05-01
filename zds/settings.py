@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-
+SITE_ID = 1
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 # INTERNAL_IPS = ('127.0.0.1',)  # debug toolbar
@@ -443,6 +443,10 @@ ZDS_APP = {
         'max_post_length': 1000000,
         'top_tag_max': 5,
         'home_number': 5,
+    },
+    'notification': {
+        'notifications_per_page': 21,
+        'subscriptions_per_page': 21,
     },
     'paginator': {
         'folding_limit': 4

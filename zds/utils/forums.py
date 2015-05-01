@@ -3,6 +3,7 @@
 from datetime import datetime
 from zds.forum.models import Topic, Post, follow
 from zds.forum.views import get_tag_by_title
+from zds.notification.models import activate_subscription
 from zds.utils.templatetags.emarkdown import emarkdown
 
 
@@ -42,7 +43,7 @@ def create_topic(
     n_topic.last_message = post
     n_topic.save()
 
-    follow(n_topic, user=author)
+    activate_subscription(n_topic, user=author)
 
     return n_topic
 

@@ -9,6 +9,7 @@ from django.db.models import F
 from zds.article.models import Reaction, ArticleRead
 from zds.forum.models import TopicFollowed, never_read as never_read_topic, Post, TopicRead
 from zds.mp.models import PrivateTopic
+from zds.notification.models import Notification
 from zds.tutorial.models import Note, TutorialRead
 from zds.utils.models import Alert
 
@@ -66,6 +67,31 @@ def comp(d1, d2):
     else:
         return 0
 
+@register.filter('notifications')
+def notifications(user):
+    unread_notifications = Notification.objects.filter(subscription__profile=user.profile, is_read=False)\
+        .order_by('-pubdate')
+    for notif in unread_notifications:
+        notif.url = notif.get_url()
+        notif.title = notif.get_title()
+        notif.author = notif.get_author()
+    return unread_notifications
+
+@register.filter('notif_title')
+def notif_title(notification):
+    return notification.get_title()
+
+@register.filter('notif_author_profile')
+def notif_author_profile(notification):
+    return notification.get_author().profile
+
+@register.filter('notif_username')
+def notif_username(notification):
+    return notification.get_author().username
+
+@register.filter('notif_url')
+def notif_url(notification):
+    return notification.get_url()
 
 @register.filter('interventions_topics')
 def interventions_topics(user):

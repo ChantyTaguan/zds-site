@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -28,7 +29,7 @@ from models import Category, Forum, Topic, Post, follow, follow_by_email, never_
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import send_notification
+from zds.notification.models import send_notification, Subscription, mark_notification_read
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -147,6 +148,8 @@ def topic(request, topic_pk, topic_slug):
     if request.user.is_authenticated():
         if never_read(topic):
             mark_read(topic)
+            mark_notification_read(topic)
+
 
     # Retrieves all posts of the topic and use paginator with them.
 
@@ -567,7 +570,7 @@ def answer(request):
                 g_topic.last_message = post
                 g_topic.save()
 
-                send_notification('NEW_CONTENT', content_subscription=g_topic, content_notification=post)
+                send_notification('NEW_CONTENT', content_subscription=g_topic, content_notification=post, action_by=post.author)
 
                 # Send mail
                 subject = u"{} - {} : {}".format(settings.ZDS_APP['site']['litteral_name'],
@@ -602,7 +605,8 @@ def answer(request):
                         msg.send()
 
                 # Follow topic on answering
-                if not g_topic.is_followed(user=request.user):
+                if not Subscription.objects.filter(object_id=g_topic.pk, content_type=ContentType(g_topic).pk,
+                                                   is_active=True, profile=request.user.profile).exists():
                     follow(g_topic)
                 return redirect(post.get_absolute_url())
             else:
