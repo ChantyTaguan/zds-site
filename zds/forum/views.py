@@ -4,19 +4,16 @@ from datetime import datetime
 import json
 
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
-from django.core.mail import EmailMultiAlternatives
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import redirect, get_object_or_404, render, render_to_response
-from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from django.utils.translation import ugettext as _
 
@@ -24,13 +21,13 @@ from haystack.inputs import AutoQuery
 from haystack.query import SearchQuerySet
 
 from forms import TopicForm, PostForm, MoveTopicForm
-from models import Category, Forum, Topic, Post, follow_by_email, never_read, \
-    mark_read, TopicFollowed, get_topics
+from models import Category, Forum, Topic, Post, never_read, \
+    mark_read, get_topics
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import Subscription, mark_notification_read, send_notification, activate_subscription, \
-    deactivate_subscription
+from zds.notification.models import mark_notification_read, send_notification, activate_subscription, \
+    deactivate_subscription, get_subscribers
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -405,10 +402,10 @@ def move_topic(request):
 
     # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
     # This avoids unreachable notifications.
-    followers = TopicFollowed.objects.filter(topic=topic)
+    followers = get_subscribers(topic)
     for follower in followers:
-        if not forum.can_read(follower.user):
-            follower.delete()
+        if not forum.can_read(follower):
+            deactivate_subscription(topic, follower)
     messages.success(request,
                      u"Le sujet {0} a bien été déplacé dans {1}."
                      .format(topic.title,
@@ -578,38 +575,6 @@ def answer(request):
 
                 send_notification(content_subscription=g_topic, content_notification=post,
                                   action_by=post.author, type_notification='NEW_CONTENT')
-
-                # Send mail
-                subject = u"{} - {} : {}".format(settings.ZDS_APP['site']['litteral_name'],
-                                                 _(u'Forum'),
-                                                 g_topic.title)
-                from_email = "{} <{}>".format(settings.ZDS_APP['site']['litteral_name'],
-                                              settings.ZDS_APP['site']['email_noreply'])
-
-                followers = g_topic.get_followers_by_email()
-                for follower in followers:
-                    receiver = follower.user
-                    if receiver == request.user:
-                        continue
-                    pos = post.position - 1
-                    last_read = TopicRead.objects.filter(
-                        topic=g_topic,
-                        post__position=pos,
-                        user=receiver).count()
-                    if last_read > 0:
-                        context = {
-                            'username': receiver.username,
-                            'title': g_topic.title,
-                            'url': settings.ZDS_APP['site']['url'] + post.get_absolute_url(),
-                            'author': request.user.username,
-                            'site_name': settings.ZDS_APP['site']['litteral_name']
-                        }
-                        message_html = render_to_string('email/forum/new_post.html', context)
-                        message_txt = render_to_string('email/forum/new_post.txt', context)
-
-                        msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
-                        msg.attach_alternative(message_html, "text/html")
-                        msg.send()
 
                 # Follow topic on answering
                 activate_subscription(g_topic)

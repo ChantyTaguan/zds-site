@@ -98,6 +98,10 @@ def notif_url(notification):
 def has_subscribed_new(content_subscription):
     return has_subscribed(content_subscription)
 
+@register.filter('has_suscribed_email_new')
+def has_suscribed_email_new(content_subscription):
+    return has_subscribed(content_subscription, by_email=True)
+
 @register.filter('has_subscribed_update')
 def has_subscribed_update(content_subscription):
     return has_subscribed(content_subscription, type_subscription='UPDATE')

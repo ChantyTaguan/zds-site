@@ -204,17 +204,17 @@
             {% csrf_token %}
 
             <button
-                class="email ico-after {% if not topic.is_email_followed %}blue{% endif %}"
+                class="email ico-after {% if not topic|has_suscribed_email_new %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-topic-by-email"
                 data-content-on-click="
-                    {% if topic.is_email_followed %}
+                    {% if topic|has_suscribed_email_new %}
                         {% trans "Être notifié par courriel" %}
                     {% else %}
                         {% trans "Ne plus être notifié par courriel" %}
                     {% endif %}
                 "
             >
-                {% if topic.is_email_followed %}
+                {% if topic|has_suscribed_email_new %}
                     {% trans "Ne plus être notifié par courriel" %}
                 {% else %}
                     {% trans "Être notifié par courriel" %}

@@ -260,12 +260,6 @@ class Topic(models.Model):
             self.tags.add(current_tag)
         self.save()
 
-    def get_followers_by_email(self):
-        """
-        :return: the set of users that follows this topic by email.
-        """
-        return TopicFollowed.objects.filter(topic=self, email=True).select_related("user")
-
     def last_read_post(self):
         """
         Returns the last post the current user has read in this topic.
@@ -301,32 +295,6 @@ class Topic(models.Model):
             return next_post
         except:
             return self.first_post()
-
-    def is_followed(self, user=None):
-        """
-        Checks if the user follows this topic.
-        :param user: An user. If undefined, the current user is used.
-        :return: `True` if the user follows this topic, `False` otherwise.
-        """
-        if user is None:
-            user = get_current_user()
-
-        return TopicFollowed.objects.filter(topic=self, user=user).exists()
-
-    def is_email_followed(self, user=None):
-        """
-        Checks if the user follows this topic by email.
-        :param user: An user. If undefined, the current user is used.
-        :return: `True` if the user follows this topic by email, `False` otherwise.
-        """
-        if user is None:
-            user = get_current_user()
-
-        try:
-            TopicFollowed.objects.get(topic=self, user=user, email=True)
-        except TopicFollowed.DoesNotExist:
-            return False
-        return True
 
     def antispam(self, user=None):
         """
@@ -403,25 +371,6 @@ class TopicRead(models.Model):
                                                         self.post.pk)
 
 
-class TopicFollowed(models.Model):
-    """
-    This model tracks which user follows which topic.
-    It serves only to manual topic following.
-    This model also indicates if the topic is followed by email.
-    """
-    class Meta:
-        verbose_name = 'Sujet suivi'
-        verbose_name_plural = 'Sujets suivis'
-
-    topic = models.ForeignKey(Topic, db_index=True)
-    user = models.ForeignKey(User, related_name='topics_followed', db_index=True)
-    email = models.BooleanField('Notification par courriel', default=False, db_index=True)
-
-    def __unicode__(self):
-        return u'<Sujet "{0}" suivi par {1}>'.format(self.topic.title,
-                                                     self.user.username)
-
-
 def never_read(topic, user=None):
     """
     Check if the user has read the **last post** of the topic.
@@ -452,39 +401,6 @@ def mark_read(topic):
     else:
         t.post = topic.last_message
     t.save()
-
-def follow_by_email(topic, user=None):
-    """
-    Toggle following by email of a topic for an user.
-    :param topic: A topic.
-    :param user: A user. If undefined, the current user is used.
-    :return: `True` if the topic is now followed, `False` if is has been un-followed.
-    """
-    ret = None
-    if user is None:
-        user = get_current_user()
-    try:
-        existing = TopicFollowed.objects.get(
-            topic=topic,
-            user=user
-        )
-    except TopicFollowed.DoesNotExist:
-        existing = None
-
-    if not existing:
-        # Make the user follow the topic
-        t = TopicFollowed(
-            topic=topic,
-            user=user,
-            email=True
-        )
-        t.save()
-        ret = True
-    else:
-        existing.email = not existing.email
-        existing.save()
-        ret = existing.email
-    return ret
 
 
 def get_last_topics(user):
