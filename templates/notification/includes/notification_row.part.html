@@ -1,0 +1,11 @@
+{% load date %}
+{% load profile %}
+{% load interventions %}
+{% load i18n %}
+
+
+{% if notification|from_topic %}
+    {% with topic=notification.subscription.content_object %}
+        {% include "forum/includes/topic_row.part.html" %}
+    {% endwith %}
+{% endif %}

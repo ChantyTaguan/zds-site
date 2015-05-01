@@ -24,12 +24,13 @@ from haystack.inputs import AutoQuery
 from haystack.query import SearchQuerySet
 
 from forms import TopicForm, PostForm, MoveTopicForm
-from models import Category, Forum, Topic, Post, follow, follow_by_email, never_read, \
+from models import Category, Forum, Topic, Post, follow_by_email, never_read, \
     mark_read, TopicFollowed, get_topics
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import Subscription, mark_notification_read, send_notification
+from zds.notification.models import Subscription, mark_notification_read, send_notification, activate_subscription, \
+    deactivate_subscription
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -325,7 +326,7 @@ def new(request):
 
             # Follow the topic
 
-            follow(n_topic)
+            activate_subscription(n_topic)
             return redirect(n_topic.get_absolute_url())
     else:
         form = TopicForm()
@@ -441,7 +442,12 @@ def edit(request):
     resp = {}
     g_topic = get_object_or_404(Topic, pk=topic_pk)
     if "follow" in data:
-        resp["follow"] = follow(g_topic)
+        if data["follow"] == "1":
+            activate_subscription(g_topic)
+            resp["follow"] = -1
+        else:
+            deactivate_subscription(g_topic)
+            resp["follow"] = 1
     if "email" in data:
         resp["email"] = follow_by_email(g_topic)
     if request.user == g_topic.author \
@@ -570,7 +576,8 @@ def answer(request):
                 g_topic.last_message = post
                 g_topic.save()
 
-                send_notification('NEW_CONTENT', content_subscription=g_topic, content_notification=post, action_by=post.author)
+                send_notification(content_subscription=g_topic, content_notification=post,
+                                  action_by=post.author, type_notification='NEW_CONTENT')
 
                 # Send mail
                 subject = u"{} - {} : {}".format(settings.ZDS_APP['site']['litteral_name'],
@@ -605,9 +612,8 @@ def answer(request):
                         msg.send()
 
                 # Follow topic on answering
-                if not Subscription.objects.filter(object_id=g_topic.pk, content_type=ContentType(g_topic).pk,
-                                                   is_active=True, profile=request.user.profile).exists():
-                    follow(g_topic)
+                activate_subscription(g_topic)
+
                 return redirect(post.get_absolute_url())
             else:
                 return render(request, "forum/post/new.html", {

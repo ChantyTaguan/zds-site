@@ -25,12 +25,13 @@ from django.views.generic import DetailView, UpdateView, CreateView
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
     OldTutoForm, PromoteMemberForm, KarmaForm
+from zds.notification.models import activate_subscription
 from zds.utils.models import Comment, CommentLike, CommentDislike
 from models import Profile, TokenForgotPassword, TokenRegister, KarmaNote
 from zds.article.models import Article
 from zds.gallery.forms import ImageAsAvatarForm
 from zds.gallery.models import UserGallery
-from zds.forum.models import Topic, follow, TopicFollowed
+from zds.forum.models import Topic, TopicFollowed
 from zds.member.decorator import can_write_and_read_now
 from zds.member.commons import ProfileCreate, TemporaryReadingOnlySanction, ReadingOnlySanction, \
     DeleteReadingOnlySanction, TemporaryBanSanction, BanSanction, DeleteBanSanction, TokenGenerator
@@ -916,13 +917,13 @@ def settings_promote(request, user_pk):
                         topics_followed = Topic.objects.filter(topicfollowed__user=user,
                                                                forum__group=group)
                         for topic in topics_followed:
-                            follow(topic, user)
+                            activate_subscription(topic, user)
         else:
             for group in usergroups:
                 topics_followed = Topic.objects.filter(topicfollowed__user=user,
                                                        forum__group=group)
                 for topic in topics_followed:
-                    follow(topic, user)
+                    activate_subscription(topic, user)
             user.groups.clear()
             messages.warning(request, _(u'{0} n\'appartient (plus ?) à aucun groupe.')
                              .format(user.username))

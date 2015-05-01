@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
+# from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from zds.utils import slugify
 from math import ceil
@@ -452,42 +452,6 @@ def mark_read(topic):
     else:
         t.post = topic.last_message
     t.save()
-
-
-def follow(topic, user=None):
-    """
-    Toggle following of a topic for an user.
-    :param topic: A topic.
-    :param user: A user. If undefined, the current user is used.
-    :return: `True` if the topic is now followed, `False` if is has been un-followed.
-    """
-    from zds.notification.models import Subscription
-
-    content_type = ContentType.objects.get(model="topic")
-    ret = None
-    if user is None:
-        user = get_current_user()
-    try:
-        existing = Subscription.objects.get(
-            object_id=topic.pk, content_type=content_type, profile=user.profile
-        )
-    except Subscription.DoesNotExist:
-        existing = None
-
-    if not existing:
-        # Make the user follow the topic
-        t = Subscription(
-            content_object=topic,
-            profile=user.profile
-        )
-        t.save()
-        ret = True
-    else:
-        # If user is already following the topic, we make him don't anymore
-        existing.delete()
-        ret = False
-    return ret
-
 
 def follow_by_email(topic, user=None):
     """

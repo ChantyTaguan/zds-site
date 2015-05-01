@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load interventions %}
+{% load captureas %}
+{% load date %}
+{% load profile %}
+{% load i18n %}
+
+
+{% block title_base %}
+    &bull; {% trans "Notifications" %}
+{% endblock %}
+
+
+
+{% block mobile_title %}
+    {% trans "Notifications" %}
+{% endblock %}
+
+
+
+{% block breadcrumb_base %}
+    <li itemscope itemtype="http://data-vocabulary.org/Breadcrumb">
+        <a href="{% url "notification-list" %}" itemprop="url">
+            <span itemprop="title">{% trans "Notifications" %}</span>
+        </a>
+    </li>
+{% endblock %}
+
+
+{% block sidebar %}
+    <aside class="sidebar mobile-menu-hide">
+
+    </aside>
+{% endblock %}

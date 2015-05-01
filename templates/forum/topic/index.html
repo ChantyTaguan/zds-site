@@ -2,6 +2,7 @@
 {% load emarkdown %}
 {% load captureas %}
 {% load set %}
+{% load interventions %}
 {% load profile %}
 {% load crispy_forms_tags %}
 {% load i18n %}
@@ -172,21 +173,21 @@
             <input type="hidden" name="topic" value="{{ topic.pk }}">
             <input type="hidden" name="nb" value="{{ nb }}">
             <input type="hidden" name="page" value="{{ nb }}">
-            <input type="hidden" name="follow" value="1">
+            <input type="hidden" name="follow" value="{% if topic|has_subscribed_new %}-1{% else %}1{% endif %}">
             {% csrf_token %}
 
             <button
-                class="follow ico-after star {% if topic.is_followed %}yellow{% else %}blue{% endif %}"
+                class="follow ico-after star {% if topic|has_subscribed_new %}yellow{% else %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-topic"
                 data-content-on-click="
-                    {% if topic.is_followed %}
+                    {% if topic|has_subscribed_new %}
                         {% trans "Suivre ce sujet" %}
                     {% else %}
                         {% trans "Ne plus suivre ce sujet" %}
                     {% endif %}
                 "
             >
-                {% if topic.is_followed %}
+                {% if topic|has_subscribed_new %}
                     {% trans "Ne plus suivre ce sujet" %}
                 {% else %}
                     {% trans "Suivre ce sujet" %}
