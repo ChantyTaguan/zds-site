@@ -77,6 +77,7 @@ class Notification(models.Model):
         else:
             return self.subscription.type
 
+
 def send_notification(type_notif, content_subscription=None, content_notification=None, action_by=None):
     if content_notification is None and type_notif != 'PING':
         return
@@ -86,7 +87,7 @@ def send_notification(type_notif, content_subscription=None, content_notificatio
                                                         content_type__pk=content_subscription_type.pk, is_active=True)
         for subscription in subscription_list:
             if (action_by is not None and action_by == subscription.profile.user) \
-                    or not subscription.last_notification.is_read:
+                    or (subscription.last_notification is not None and not subscription.last_notification.is_read):
                 continue
             else:
                 notification = Notification(subscription=subscription, content_object=content_notification)
@@ -128,9 +129,10 @@ def activate_subscription(user, content_subscription):
 
 def mark_notification_read(content_subscription):
     user = get_current_user()
-    n = Notification.objects.filter(profile=user.profile, is_read=False,
-                                    content_type__pk=ContentType.objects.getl(model='post'),
-                                    subscription__pk=content_subscription.pk)
+    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
+    n = Notification.objects.filter(subscription__profile=user.profile, is_read=False,
+                                    subscription__object_id=content_subscription.pk,
+                                    subscription__content_type__pk=content_subscription_type.pk)
     for notification in n:
         notification.is_read = True
         notification.save()

@@ -129,7 +129,7 @@ class TopicPostsListView(ZdSPagingListView, SingleObjectMixin):
         if self.request.user.is_authenticated():
             if never_read(self.object):
                 mark_read(self.object)
-                mark_notification_read(self.object)
+            mark_notification_read(self.object)
         return context
 
     def get_object(self, queryset=None):
