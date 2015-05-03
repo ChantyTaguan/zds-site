@@ -20,7 +20,7 @@ urlpatterns = patterns('',
                        # Developers warning: if you update something here, check and update help_text
                        # on Category slug field
 
-                       # Followed topics
+                       # Notifications
                        url(r'^notifications/$',
                            'zds.forum.views.followed_topics'),
 
@@ -51,6 +51,8 @@ urlpatterns = patterns('',
                        url(r'^$', CategoriesForumsListView.as_view(), name='cats-forums-list'),
 
                        # Forum details
+                       url(r'^editer/notification/$',
+                           'zds.forum.views.edit_notification_forum'),
                        url(r'^(?P<cat_slug>.+)/(?P<forum_slug>.+)/$', ForumTopicsListView.as_view(),
                            name='forum-topics-list'),
 

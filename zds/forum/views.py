@@ -21,7 +21,8 @@ from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
-from zds.notification.models import mark_notification_read
+from zds.notification.models import mark_notification_read, activate_subscription, send_notification, \
+    deactivate_subscription
 from django.views.decorators.http import require_POST
 from django.utils.translation import ugettext_lazy as _
 
@@ -198,6 +199,11 @@ class TopicNew(CreateView, SingleObjectMixin):
             form.data['text'],
             None
         )
+        # Follow the topic
+        activate_subscription(topic)
+
+        # Notify the forum followers
+        send_notification(self.object, topic)
         return redirect(topic.get_absolute_url())
 
 
@@ -300,6 +306,10 @@ class TopicEdit(UpdateView, SingleObjectMixin, TopicEditMixin):
 
     def form_valid(self, form):
         topic = self.perform_edit_info(self.object, self.request.POST, self.request.user)
+        send_notification(content_subscription=topic, content_notification=topic.first_post(), type_notification='NEW_CONTENT')
+
+        # Follow topic on answering
+        activate_subscription(topic)
         return redirect(topic.get_absolute_url())
 
 
@@ -402,6 +412,11 @@ class PostNew(CreatePostView):
 
     def form_valid(self, form):
         topic = send_post(self.request, self.object, self.request.user, form.data.get('text'), send_by_mail=True)
+
+        send_notification(content_subscription=topic, content_notification=topic.last_message, type_notification='NEW_CONTENT')
+
+        # Follow topic on answering
+        activate_subscription(topic)
         return redirect(topic.last_message.get_absolute_url())
 
     def get_object(self, queryset=None):
@@ -672,3 +687,34 @@ def complete_topic(request):
     the_data = json.dumps(suggestions)
 
     return HttpResponse(the_data, content_type='application/json')
+
+@login_required
+@require_POST
+def edit_notification_forum(request):
+    """
+    Activate or deactivate the notifications for new topics in this forum
+    """
+
+    try:
+        forum_pk = request.POST['forum']
+    except (KeyError, ValueError):
+        # problem in variable format
+        raise Http404
+    forum = get_object_or_404(Forum, pk=forum_pk)
+    if not forum.can_read(request.user):
+        raise PermissionDenied
+
+    data = request.POST
+    resp = {}
+    if "follow" in data:
+        if data["follow"] == "1":
+            activate_subscription(forum)
+            resp["follow"] = -1
+        else:
+            deactivate_subscription(forum)
+            resp["follow"] = 1
+
+    if request.is_ajax():
+        return HttpResponse(json.dumps(resp), content_type='application/json')
+    else:
+        return redirect(forum.get_absolute_url())

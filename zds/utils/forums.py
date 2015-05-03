@@ -3,18 +3,13 @@
 import json
 
 from datetime import datetime
-from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import render, render_to_response
-from django.template.loader import render_to_string
-from django.utils.translation import ugettext as _
 from django.views.generic import CreateView
 from django.views.generic.detail import SingleObjectMixin
 
-from zds import settings
-from zds.forum.models import Topic, Post, TopicRead
+from zds.forum.models import Topic, Post
 from zds.member.views import get_client_ip
-from zds.notification.models import send_notification, activate_subscription
 from zds.utils.mixins import QuoteMixin
 
 
@@ -109,13 +104,6 @@ def send_post(request, topic, author, text, send_by_mail=False,):
 
     topic.last_message = post
     topic.save()
-
-    activate_subscription(topic, user=author, type='NEW_CONTENT')
-    send_notification(content_subscription=topic, content_notification=post,
-                      action_by=post.author, type_notification='NEW_CONTENT')
-
-    # Follow topic on answering
-    activate_subscription(topic)
 
     return topic
 
