@@ -5,21 +5,30 @@ from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.generic.detail import SingleObjectMixin
-from zds.forum.models import Forum, TopicFollowed, follow, follow_by_email, Post, TopicRead
+from zds.forum.models import Forum, Post, TopicRead
 from django.utils.translation import ugettext as _
-from zds.notification.models import get_subscribers, deactivate_subscription
+from zds.notification.models import get_subscribers, deactivate_subscription, activate_subscription, \
+    deactivate_email_subscription, send_notification
 from zds.utils.forums import get_tag_by_title
 from zds.utils.models import Alert, CommentLike, CommentDislike
 
 
 class TopicEditMixin(object):
     @staticmethod
-    def perform_follow(topic, user):
-        return follow(topic, user)
+    def perform_follow(active, topic, user):
+        if active:
+            activate_subscription(topic, user=user)
+            return -1
+        deactivate_subscription(topic, user=user)
+        return 1
 
     @staticmethod
-    def perform_follow_by_email(topic, user):
-        return follow_by_email(topic, user)
+    def perform_follow_by_email(active, topic, user):
+        if active:
+            activate_subscription(topic, user=user)
+            return -1
+        deactivate_email_subscription(topic, user=user)
+        return 1
 
     @staticmethod
     def perform_solve_or_unsolve(user, topic):
@@ -135,8 +144,7 @@ class PostEditMixin(object):
         Marks a post unread so we create a notification between the user and the topic host of the post.
         But, if there is only one post in the topic, we mark the topic unread but we don't create a notification.
         """
-        if TopicFollowed.objects.filter(user=user, topic=post.topic).count() == 0:
-            TopicFollowed(user=user, topic=post.topic).save()
+        send_notification(post.topic, post.topic, post.author)
 
         topic_read = TopicRead.objects.filter(topic=post.topic, user=user).first()
         if topic_read is None and post.position > 1:

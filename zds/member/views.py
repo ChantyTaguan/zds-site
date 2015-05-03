@@ -26,13 +26,13 @@ from django.views.generic import DetailView, UpdateView, CreateView
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
     OldTutoForm, PromoteMemberForm, KarmaForm
-from zds.notification.models import activate_subscription
+from zds.notification.models import activate_subscription, Subscription, Notification
 from zds.utils.models import Comment, CommentLike, CommentDislike
 from models import Profile, TokenForgotPassword, TokenRegister, KarmaNote
 from zds.article.models import Article
 from zds.gallery.forms import ImageAsAvatarForm
 from zds.gallery.models import UserGallery
-from zds.forum.models import Topic, TopicFollowed
+from zds.forum.models import Topic
 from zds.member.decorator import can_write_and_read_now
 from zds.member.commons import ProfileCreate, TemporaryReadingOnlySanction, ReadingOnlySanction, \
     DeleteReadingOnlySanction, TemporaryBanSanction, BanSanction, DeleteBanSanction, TokenGenerator
@@ -335,7 +335,8 @@ def unregister(request):
     for topic in Topic.objects.filter(author=current):
         topic.author = anonymous
         topic.save()
-    TopicFollowed.objects.filter(user=current).delete()
+    Notification.objects.filter(subscription__profile=current.profile)
+    Subscription.objects.filter(profile=current.profile).delete()
     # Before deleting gallery let's summurize what we deleted
     # - unpublished tutorials with only the unregistering member as an author
     # - unpublished articles with only the unregistering member as an author
