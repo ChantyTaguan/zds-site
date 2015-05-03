@@ -8,9 +8,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import F
 
 from zds.article.models import Reaction, ArticleRead
-from zds.forum.models import TopicFollowed, never_read as never_read_topic, Post, TopicRead
+from zds.forum.models import never_read as never_read_topic, Post, TopicRead, Topic
 from zds.mp.models import PrivateTopic
-from zds.notification.models import Notification, has_subscribed
+from zds.notification.models import Notification, has_subscribed, Subscription
 from zds.tutorial.models import Note, TutorialRead
 from zds.utils.models import Alert
 
@@ -36,8 +36,8 @@ def humane_delta(value):
 
 @register.filter('followed_topics')
 def followed_topics(user):
-    topicsfollowed = TopicFollowed.objects.select_related("topic").filter(user=user)\
-        .order_by('-topic__last_message__pubdate')[:10]
+    topics_followed = Subscription.objects.filter(profile=user.profile, content_type__model='topic', is_active=True)\
+        .order_by('-last_notification__pubdate')[:10]
     # This period is a map for link a moment (Today, yesterday, this week, this month, etc.) with
     # the number of days for which we can say we're still in the period
     # for exemple, the tuple (2, 1) means for the period "2" corresponding to "Yesterday" according
@@ -45,15 +45,15 @@ def followed_topics(user):
     # Number is use for index for sort map easily
     period = ((1, 0), (2, 1), (3, 7), (4, 30), (5, 360))
     topics = {}
-    for tf in topicsfollowed:
+    for tf in topics_followed:
         for p in period:
-            if tf.topic.last_message.pubdate.date() >= (datetime.now() - timedelta(days=int(p[1]),
+            if tf.content_object.last_message.pubdate.date() >= (datetime.now() - timedelta(days=int(p[1]),
                                                                                    hours=0, minutes=0,
                                                                                    seconds=0)).date():
                 if p[0] in topics:
-                    topics[p[0]].append(tf.topic)
+                    topics[p[0]].append(tf.content_object)
                 else:
-                    topics[p[0]] = [tf.topic]
+                    topics[p[0]] = [tf.content_object]
                 break
     return topics
 
@@ -109,66 +109,6 @@ def has_subscribed_update(content_subscription):
 @register.filter('from_topic')
 def from_topic(notification):
     return notification.subscription.content_type.model == 'topic'
-
-@register.filter('interventions_topics')
-def interventions_topics(user):
-    topicsfollowed = TopicFollowed.objects.filter(user=user).values("topic").distinct().all()
-
-    topics_never_read = TopicRead.objects\
-        .filter(user=user)\
-        .filter(topic__in=topicsfollowed)\
-        .select_related("topic")\
-        .exclude(post=F('topic__last_message'))
-
-    articlesfollowed = Reaction.objects\
-        .filter(author=user, article__sha_public__isnull=False)\
-        .values('article')\
-        .distinct().all()
-
-    articles_never_read = ArticleRead.objects\
-        .filter(user=user)\
-        .filter(article__in=articlesfollowed)\
-        .select_related("article")\
-        .exclude(reaction=F('article__last_reaction'))
-
-    tutorialsfollowed = Note.objects\
-        .filter(author=user, tutorial__sha_public__isnull=False)\
-        .values('tutorial')\
-        .distinct().all()
-
-    tutorials_never_read = TutorialRead.objects\
-        .filter(user=user)\
-        .filter(tutorial__in=tutorialsfollowed)\
-        .exclude(note=F('tutorial__last_note'))
-
-    posts_unread = []
-
-    for art in articles_never_read:
-        content = art.article.first_unread_reaction()
-        posts_unread.append({'pubdate': content.pubdate,
-                             'author': content.author,
-                             'title': art.article.title,
-                             'url': content.get_absolute_url()})
-
-    for tuto in tutorials_never_read:
-        content = tuto.tutorial.first_unread_note()
-        posts_unread.append({'pubdate': content.pubdate,
-                             'author': content.author,
-                             'title': tuto.tutorial.title,
-                             'url': content.get_absolute_url()})
-
-    for top in topics_never_read:
-        content = top.topic.first_unread_post()
-        if content is None:
-            content = top.topic.last_message
-        posts_unread.append({'pubdate': content.pubdate,
-                             'author': content.author,
-                             'title': top.topic.title,
-                             'url': content.get_absolute_url()})
-
-    posts_unread.sort(cmp=comp)
-
-    return posts_unread
 
 
 @register.filter('interventions_privatetopics')

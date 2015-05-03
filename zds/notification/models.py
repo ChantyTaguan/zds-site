@@ -91,9 +91,15 @@ def send_notification(content_subscription, content_notification, action_by=None
             .filter(object_id=content_subscription.pk, content_type__pk=content_subscription_type.pk,
                     is_active=True, type=type_notification)
         for subscription in subscription_list:
-            if (action_by is not None and action_by == subscription.profile.user) \
-                    or (subscription.last_notification is not None and not subscription.last_notification.is_read):
+            if action_by is not None and action_by == subscription.profile.user:
                 continue
+            elif subscription.last_notification is not None and not subscription.last_notification.is_read:
+                # there's already an unread notification for that subscription
+                if subscription.last_notification.content_object.position > content_notification.position:
+                    # if the content of the new notification is older, it replaces the current notification
+                    subscription.last_notification.content_object = content_notification
+                    subscription.last_notification.save()
+                    subscription.save()
             else:
                 notification = Notification(subscription=subscription, content_object=content_notification)
                 notification.save()
@@ -125,7 +131,7 @@ def send_notification(content_subscription, content_notification, action_by=None
                     msg.send()
 
 
-def activate_subscription(content_subscription, user=None, type_subscription=None):
+def activate_subscription(content_subscription, user=None, type_subscription=None, by_email=False):
     """create a subscription if it does not exists, activate the existing subscription if it's not active"""
 
     content_subscription_type = ContentType.objects.get_for_model(content_subscription)
@@ -143,10 +149,8 @@ def activate_subscription(content_subscription, user=None, type_subscription=Non
 
     if not existing:
         # Make the user follow the topic
-        t = Subscription(
-            content_object=content_subscription,
-            profile=user.profile,
-            type=type_subscription
+        t = Subscription(content_object=content_subscription,
+                         profile=user.profile, type=type_subscription, by_email=by_email
         )
 
         t.save()
@@ -154,8 +158,25 @@ def activate_subscription(content_subscription, user=None, type_subscription=Non
         # Activate the existing subscription if it is inactive
         if not existing.is_active:
             existing.is_active = True
+            if by_email:
+                existing.by_email = True
             existing.save()
 
+def deactivate_email_subscription(content_subscription, user=None, type_subscription='NEW_CONTENT'):
+    """Deactivate the email subscription if it does exists and is active"""
+
+    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
+
+    if user is None:
+        user = get_current_user()
+    try:
+        existing = Subscription.objects.get(object_id=content_subscription.pk,
+                                            content_type__pk=content_subscription_type.pk,
+                                            profile=user.profile, type=type_subscription, is_active=True, by_email=True)
+        existing.by_email = False
+        existing.save()
+    except Subscription.DoesNotExist:
+        existing = None
 
 def deactivate_subscription(content_subscription, user=None, type_subscription='NEW_CONTENT'):
     """Deactivate the subscription if it does exists and is active"""
@@ -185,7 +206,7 @@ def mark_notification_read(content_subscription):
         notification.save()
 
 
-def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT', only_by_email=False):
+def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT', by_email=False):
     if user is None:
         user = get_current_user()
 
@@ -201,7 +222,7 @@ def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTE
     res = existing is not None
 
     # if I'm only interested by the email subscription
-    if res and only_by_email:
+    if res and by_email:
         res = existing.by_email
 
     return res

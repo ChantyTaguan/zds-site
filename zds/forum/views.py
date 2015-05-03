@@ -27,7 +27,7 @@ from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
 from zds.notification.models import mark_notification_read, send_notification, activate_subscription, \
-    deactivate_subscription, get_subscribers
+    deactivate_subscription, get_subscribers, deactivate_email_subscription
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -446,7 +446,12 @@ def edit(request):
             deactivate_subscription(g_topic)
             resp["follow"] = 1
     if "email" in data:
-        resp["email"] = follow_by_email(g_topic)
+        if data["email"] == "1":
+            activate_subscription(g_topic)
+            resp["email"] = -1
+        else:
+            deactivate_email_subscription(g_topic)
+            resp["follow"] = 1
     if request.user == g_topic.author \
             or request.user.has_perm("forum.change_topic"):
         if "solved" in data:
@@ -848,8 +853,8 @@ def unread_post(request):
 
     if not post.topic.forum.can_read(request.user):
         raise PermissionDenied
-    if TopicFollowed.objects.filter(user=request.user, topic=post.topic).count() == 0:
-        TopicFollowed(user=request.user, topic=post.topic).save()
+
+    send_notification(post.topic, topic, post.author)
 
     t = TopicRead.objects.filter(topic=post.topic, user=request.user).first()
     if t is None:
