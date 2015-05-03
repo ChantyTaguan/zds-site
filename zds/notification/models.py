@@ -76,13 +76,13 @@ class Notification(models.Model):
     def get_title(self):
         if self.content_type == ContentType.objects.get(model="post"):
             return self.content_object.topic.title
-        elif self.content_type == ContentType.objects.get(model="private_post"):
-            return self.content_object.privatetopic.title
+        elif self.content_type == ContentType.objects.get(model="topic"):
+            return self.content_object.title
         else:
             return self.subscription.type
 
 
-def send_notification(content_subscription, content_notification, action_by=None, type_notification='NEW_CONTENT'):
+def send_notification(content_subscription, content_notification, type_notification='NEW_CONTENT'):
     if content_subscription is None:
         return
     elif content_subscription is not None:
@@ -90,8 +90,9 @@ def send_notification(content_subscription, content_notification, action_by=None
         subscription_list = Subscription.objects\
             .filter(object_id=content_subscription.pk, content_type__pk=content_subscription_type.pk,
                     is_active=True, type=type_notification)
+        action_by = get_current_user()
         for subscription in subscription_list:
-            if action_by is not None and action_by == subscription.profile.user:
+            if action_by == subscription.profile.user:
                 continue
             elif subscription.last_notification is not None and not subscription.last_notification.is_read:
                 # there's already an unread notification for that subscription

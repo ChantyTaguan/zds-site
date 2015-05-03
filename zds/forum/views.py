@@ -322,8 +322,10 @@ def new(request):
             n_topic.save()
 
             # Follow the topic
-
             activate_subscription(n_topic)
+
+            # Notify the forum followers
+            send_notification(forum, n_topic)
             return redirect(n_topic.get_absolute_url())
     else:
         form = TopicForm()
@@ -578,8 +580,7 @@ def answer(request):
                 g_topic.last_message = post
                 g_topic.save()
 
-                send_notification(content_subscription=g_topic, content_notification=post,
-                                  action_by=post.author, type_notification='NEW_CONTENT')
+                send_notification(content_subscription=g_topic, content_notification=post, type_notification='NEW_CONTENT')
 
                 # Follow topic on answering
                 activate_subscription(g_topic)
@@ -1172,3 +1173,34 @@ def complete_topic(request):
     the_data = json.dumps(suggestions)
 
     return HttpResponse(the_data, content_type='application/json')
+
+@login_required
+@require_POST
+def edit_notification_forum(request):
+    """
+    Activate or deactivate the notifications for new topics in this forum
+    """
+
+    try:
+        forum_pk = request.POST['forum']
+    except (KeyError, ValueError):
+        # problem in variable format
+        raise Http404
+    forum = get_object_or_404(Forum, pk=forum_pk)
+    if not forum.can_read(request.user):
+        raise PermissionDenied
+
+    data = request.POST
+    resp = {}
+    if "follow" in data:
+        if data["follow"] == "1":
+            activate_subscription(forum)
+            resp["follow"] = -1
+        else:
+            deactivate_subscription(forum)
+            resp["follow"] = 1
+
+    if request.is_ajax():
+        return HttpResponse(json.dumps(resp), content_type='application/json')
+    else:
+        return redirect(forum.get_absolute_url())

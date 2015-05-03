@@ -25,7 +25,7 @@ urlpatterns = patterns('',
                        # Home
                        url(r'^$', 'zds.forum.views.index'),
 
-                       # Followed topics
+                       # Notifications
                        url(r'^notifications/$',
                            'zds.forum.views.followed_topics'),
 
@@ -66,6 +66,8 @@ urlpatterns = patterns('',
                            'zds.forum.views.find_post'),
 
                        # Forum details
+                       url(r'^editer/notification/$',
+                           'zds.forum.views.edit_notification_forum'),
                        url(r'^(?P<cat_slug>.+)/(?P<forum_slug>.+)/$',
                            'zds.forum.views.details'),
 

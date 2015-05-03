@@ -1,5 +1,6 @@
 {% extends "forum/base.html" %}
 {% load i18n %}
+{% load interventions %}
 
 
 {% block title %}
@@ -68,6 +69,34 @@
     <a href="{% url "zds.forum.views.new" %}?forum={{ forum.pk }}" class="new-btn ico-after more blue">
         {% trans "Nouveau sujet" %}
     </a>
+{% endblock %}
+
+{% block sidebar_actions %}
+    <li>
+        <form action="{% url "zds.forum.views.edit_notification_forum" %}" method="post">
+            <input type="hidden" name="forum" value="{{ forum.pk }}">
+            <input type="hidden" name="follow" value="{% if forum|has_subscribed_new %}-1{% else %}1{% endif %}">
+            {% csrf_token %}
+
+            <button
+                class="follow ico-after star {% if forum|has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                type="submit" data-ajax-input="follow-forum"
+                data-content-on-click="
+                    {% if forum|has_subscribed_new %}
+                        {% trans "Suivre ce forum" %}
+                    {% else %}
+                        {% trans "Ne plus suivre ce forum" %}
+                    {% endif %}
+                "
+            >
+                {% if forum|has_subscribed_new %}
+                    {% trans "Ne plus suivre ce forum" %}
+                {% else %}
+                    {% trans "Suivre ce forum" %}
+                {% endif %}
+            </button>
+        </form>
+    </li>
 {% endblock %}
 
 
