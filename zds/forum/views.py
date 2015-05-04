@@ -200,7 +200,7 @@ class TopicNew(CreateView, SingleObjectMixin):
             None
         )
         # Follow the topic
-        activate_subscription(topic)
+        activate_subscription(topic, is_multiple=True)
 
         # Notify the forum followers
         send_notification(self.object, topic)
@@ -416,7 +416,7 @@ class PostNew(CreatePostView):
         send_notification(content_subscription=topic, content_notification=topic.last_message, type_notification='NEW_CONTENT')
 
         # Follow topic on answering
-        activate_subscription(topic)
+        activate_subscription(topic, is_multiple=False)
         return redirect(topic.last_message.get_absolute_url())
 
     def get_object(self, queryset=None):
@@ -708,7 +708,7 @@ def edit_notification_forum(request):
     resp = {}
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(forum)
+            activate_subscription(forum, is_multiple=True)
             resp["follow"] = -1
         else:
             deactivate_subscription(forum)

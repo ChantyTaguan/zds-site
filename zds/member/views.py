@@ -921,13 +921,13 @@ def settings_promote(request, user_pk):
                         topics_followed = Topic.objects.filter(topicfollowed__user=user,
                                                                forum__group=group)
                         for topic in topics_followed:
-                            activate_subscription(topic, user)
+                            activate_subscription(topic, user, is_multiple=False)
         else:
             for group in usergroups:
                 topics_followed = Topic.objects.filter(topicfollowed__user=user,
                                                        forum__group=group)
                 for topic in topics_followed:
-                    activate_subscription(topic, user)
+                    activate_subscription(topic, user, is_multiple=False)
             user.groups.clear()
             messages.warning(request, _(u'{0} n\'appartient (plus ?) à aucun groupe.')
                              .format(user.username))

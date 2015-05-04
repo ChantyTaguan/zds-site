@@ -17,7 +17,7 @@ class TopicEditMixin(object):
     @staticmethod
     def perform_follow(active, topic, user):
         if active:
-            activate_subscription(topic, user=user)
+            activate_subscription(topic, user=user, is_multiple=False)
             return -1
         deactivate_subscription(topic, user=user)
         return 1
@@ -25,7 +25,7 @@ class TopicEditMixin(object):
     @staticmethod
     def perform_follow_by_email(active, topic, user):
         if active:
-            activate_subscription(topic, user=user)
+            activate_subscription(topic, user=user, by_email=True, is_multiple=False)
             return -1
         deactivate_email_subscription(topic, user=user)
         return 1
