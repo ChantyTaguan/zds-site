@@ -322,7 +322,7 @@ def new(request):
             n_topic.save()
 
             # Follow the topic
-            activate_subscription(n_topic)
+            activate_subscription(n_topic, is_multiple=True)
 
             # Notify the forum followers
             send_notification(forum, n_topic)
@@ -442,14 +442,14 @@ def edit(request):
     g_topic = get_object_or_404(Topic, pk=topic_pk)
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(g_topic)
+            activate_subscription(g_topic, is_multiple=False)
             resp["follow"] = -1
         else:
             deactivate_subscription(g_topic)
             resp["follow"] = 1
     if "email" in data:
         if data["email"] == "1":
-            activate_subscription(g_topic)
+            activate_subscription(g_topic, by_email=True, is_multiple=False)
             resp["email"] = -1
         else:
             deactivate_email_subscription(g_topic)
@@ -583,7 +583,7 @@ def answer(request):
                 send_notification(content_subscription=g_topic, content_notification=post, type_notification='NEW_CONTENT')
 
                 # Follow topic on answering
-                activate_subscription(g_topic)
+                activate_subscription(g_topic, is_multiple=False)
 
                 return redirect(post.get_absolute_url())
             else:
@@ -1194,7 +1194,7 @@ def edit_notification_forum(request):
     resp = {}
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(forum)
+            activate_subscription(forum, is_multiple=True)
             resp["follow"] = -1
         else:
             deactivate_subscription(forum)
