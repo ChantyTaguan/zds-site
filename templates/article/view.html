@@ -7,6 +7,7 @@
 {% load set %}
 {% load thumbnail %}
 {% load i18n %}
+{% load interventions %}
 
 {% block title %}
     {{ article.title }}
@@ -231,6 +232,39 @@
             </ul>
         </div>
     {% endif %}
+
+    <div class="mobile-menu-bloc mobile-all-links mobile-show-ico" data-title="Actions">
+        <h3>{% trans "Actions" %}</h3>
+        <ul>
+            <li>
+                <form action="{% url "zds.article.views.modify" %}" method="post">
+                    <input type="hidden" name="article" value="{{ article.pk }}">
+                    <input type="hidden" name="nb" value="{{ nb }}">
+                    <input type="hidden" name="page" value="{{ nb }}">
+                    <input type="hidden" name="follow" value="{% if article|has_subscribed_new %}-1{% else %}1{% endif %}">
+                    {% csrf_token %}
+
+                    <button
+                        class="follow ico-after star {% if article|has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                        type="submit" data-ajax-input="follow-article"
+                        data-content-on-click="
+                            {% if article|has_subscribed_new %}
+                                {% trans "Suivre cet article" %}
+                            {% else %}
+                                {% trans "Ne plus suivre cet article" %}
+                            {% endif %}
+                        "
+                    >
+                        {% if article|has_subscribed_new %}
+                            {% trans "Ne plus suivre cet article" %}
+                        {% else %}
+                            {% trans "Suivre cet article" %}
+                        {% endif %}
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
 
     <div class="mobile-menu-bloc mobile-all-links mobile-show-ico" data-title="Télécharger">
         <h3>{% trans "Télécharger" %}</h3>

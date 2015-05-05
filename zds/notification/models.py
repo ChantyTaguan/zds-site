@@ -72,16 +72,18 @@ class Notification(models.Model):
         return self.content_object.author
 
     def get_url(self):
-        return self.content_object.get_absolute_url()
+        if self.content_type == ContentType.objects.get(model="article") or self.content_type == ContentType.objects.get(model="tutorial"):
+            return self.content_object.get_absolute_url_online()
+        else:
+            return self.content_object.get_absolute_url()
 
     def get_title(self):
         if self.content_type == ContentType.objects.get(model="post"):
             return self.content_object.topic.title
-        elif self.content_type == ContentType.objects.get(model="topic"):
-            return self.content_object.title
+        elif self.content_type == ContentType.objects.get(model="reaction"):
+            return self.subscription.content_object.title
         else:
-            return self.subscription.type
-
+            return self.content_object.title
 
 def send_notification(content_subscription, content_notification, type_notification='NEW_CONTENT'):
     if content_subscription is None:
@@ -225,12 +227,23 @@ def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTE
     if user is None:
         user = get_current_user()
 
-    content_subscription_type = ContentType.objects.get_for_model(content_subscription)
-
     try:
+        content_subscription_type = ContentType.objects.get_for_model(content_subscription)
         existing = Subscription.objects.get(object_id=content_subscription.pk,
                                             content_type__pk=content_subscription_type.pk,
-                                            profile=user.profile, type=type_subscription)
+                                            profile=user.profile, type=type_subscription, is_active=True)
+    except AttributeError:
+        pk = content_subscription['pk']
+        content_subscription_type = ContentType.objects.get(model=content_subscription['type'])
+
+        try:
+            existing = Subscription.objects.get(object_id=pk,
+                                                content_type__pk=content_subscription_type.pk,
+                                                profile=user.profile, type=type_subscription, is_active=True)
+
+        except Subscription.DoesNotExist:
+            existing = None
+
     except Subscription.DoesNotExist:
         existing = None
 
