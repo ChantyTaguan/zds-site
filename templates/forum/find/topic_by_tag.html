@@ -2,7 +2,7 @@
 {% load profile %}
 {% load emarkdown %}
 {% load i18n %}
-
+{% load interventions %}
 
 {% block title %}
     {% trans "Tag" %} : {{ tag.title }}
@@ -18,6 +18,34 @@
 
 {% block headline %}
     {% trans "Tag" %} : {{ tag.title }}
+{% endblock %}
+
+{% block sidebar_actions %}
+    <li>
+        <form action="{% url "zds.forum.views.edit_notification_forum" %}" method="post">
+            <input type="hidden" name="tag" value="{{ tag.pk }}">
+            <input type="hidden" name="follow" value="{% if tag|has_subscribed_new %}-1{% else %}1{% endif %}">
+            {% csrf_token %}
+
+            <button
+                class="follow ico-after star {% if tag|has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                type="submit" data-ajax-input="follow-tag"
+                data-content-on-click="
+                    {% if tag|has_subscribed_new %}
+                        {% trans "Suivre ce tag" %}
+                    {% else %}
+                        {% trans "Ne plus suivre ce tag" %}
+                    {% endif %}
+                "
+            >
+                {% if tag|has_subscribed_new %}
+                    {% trans "Ne plus suivre ce tag" %}
+                {% else %}
+                    {% trans "Suivre ce tag" %}
+                {% endif %}
+            </button>
+        </form>
+    </li>
 {% endblock %}
 
 {% block feeds_rss %}

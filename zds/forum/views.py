@@ -204,6 +204,10 @@ class TopicNew(CreateView, SingleObjectMixin):
 
         # Notify the forum followers
         send_notification(self.object, topic)
+
+        # Notify the tag followers
+        for tag in topic.tags.all():
+            send_notification(tag, topic)
         return redirect(topic.get_absolute_url())
 
 
@@ -695,26 +699,24 @@ def edit_notification_forum(request):
     Activate or deactivate the notifications for new topics in this forum
     """
 
-    try:
-        forum_pk = request.POST['forum']
-    except (KeyError, ValueError):
-        # problem in variable format
-        raise Http404
-    forum = get_object_or_404(Forum, pk=forum_pk)
-    if not forum.can_read(request.user):
-        raise PermissionDenied
-
     data = request.POST
     resp = {}
+    if "forum" in data:
+        content = get_object_or_404(Forum, pk=data["forum"])
+        if not content.can_read(request.user):
+            raise PermissionDenied
+    elif "tag" in data:
+        content = get_object_or_404(Tag, pk=data["tag"])
+
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(forum, is_multiple=True)
+            activate_subscription(content, is_multiple=True)
             resp["follow"] = -1
         else:
-            deactivate_subscription(forum)
+            deactivate_subscription(content)
             resp["follow"] = 1
 
     if request.is_ajax():
         return HttpResponse(json.dumps(resp), content_type='application/json')
     else:
-        return redirect(forum.get_absolute_url())
+        return redirect(content.get_absolute_url())
