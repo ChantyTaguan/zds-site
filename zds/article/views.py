@@ -3,6 +3,8 @@
 from datetime import datetime
 from operator import attrgetter
 from zds.member.models import Profile
+from zds.notification.models import activate_subscription, send_notification, mark_notification_read, \
+    deactivate_subscription
 
 try:
     import ujson as json_reader
@@ -159,8 +161,7 @@ def view_online(request, article_pk, article_slug):
         # antispam filter.
         article_version['antispam'] = article.antispam()
         # If the user is never read, we mark this article read.
-        if never_read(article):
-            mark_read(article)
+        mark_notification_read(article)
 
     # Find all reactions of the article.
     reactions = Reaction.objects\
@@ -729,6 +730,9 @@ def modify(request):
                     True,
                     direct=False)
 
+                for author in article.authors.all():
+                    activate_subscription(article, user=author, is_multiple=False)
+
                 return redirect(
                     article.get_absolute_url() +
                     '?version=' +
@@ -893,6 +897,19 @@ def modify(request):
             )
 
             return redirect(redirect_url)
+
+    if 'follow' in request.POST:
+        resp = {}
+        if data["follow"] == "1":
+            activate_subscription(article, is_multiple=False)
+            resp["follow"] = -1
+        else:
+            deactivate_subscription(article)
+            resp["follow"] = 1
+        if request.is_ajax():
+            return HttpResponse(json_writter.dumps(resp), content_type='application/json')
+        else:
+            return redirect(article.get_absolute_url_online())
 
     return redirect(article.get_absolute_url())
 
@@ -1153,6 +1170,12 @@ def answer(request):
 
                 article.last_reaction = reaction
                 article.save()
+
+                send_notification(content_subscription=article, content_notification=reaction,
+                                  type_notification='NEW_CONTENT')
+
+                # Follow topic on answering
+                activate_subscription(article, is_multiple=False)
 
                 return redirect(reaction.get_absolute_url())
             else:
