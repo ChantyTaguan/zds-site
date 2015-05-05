@@ -4,10 +4,10 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.generic import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
+from django.utils.translation import ugettext_lazy as _
 
 from django.db import models
 from django.template.loader import render_to_string
-from sphinx.locale import _
 from zds.member.models import Profile
 from zds.utils import get_current_user
 
@@ -24,29 +24,29 @@ class Subscription(models.Model):
     Model used to register the subscription of a user to a set of notifications (regarding a tutorial, a forum, ...)
     """
     class Meta:
-        verbose_name = 'Abonnement'
-        verbose_name_plural = 'Abonnements'
+        verbose_name = _(u'Abonnement')
+        verbose_name_plural = _(u'Abonnements')
 
     profile = models.ForeignKey(Profile, related_name='subscriptor', db_index=True)
     type = models.CharField(
         max_length=10,
         choices=TYPE_CHOICES,
         default='NEW_CONTENT', db_index=True)
-    pubdate = models.DateTimeField(u'Date de création', auto_now_add=True, db_index=True)
-    is_active = models.BooleanField('Actif', default=True, db_index=True)
-    by_email = models.BooleanField('Recevoir un email', default=False)
-    is_multiple = models.BooleanField('Peut contenir plusieurs notifications non lues simultanées', default=True)
+    pubdate = models.DateTimeField(_(u'Date de création'), auto_now_add=True, db_index=True)
+    is_active = models.BooleanField(_(u'Actif'), default=True, db_index=True)
+    by_email = models.BooleanField(_(u'Recevoir un email'), default=False)
+    is_multiple = models.BooleanField(_(u'Peut contenir plusieurs notifications non lues simultanées'), default=True)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    last_notification = models.ForeignKey('Notification', related_name="last_notification", null=True, default=None)
+    last_notification = models.ForeignKey(_(u'Notification'), related_name="last_notification", null=True, default=None)
 
     def __unicode__(self):
-        return u'<Abonnement du membre "{0}" aux notifications ' \
-               u'de type {1} pour le {2}, #{3}>'.format(self.profile,
-                                                        self.type,
-                                                        self.content_type,
-                                                        self.content_object.pk)
+        return _(u'<Abonnement du membre "{0}" aux notifications ' \
+                 u'de type {1} pour le {2}, #{3}>').format(self.profile,
+                                                           self.type,
+                                                           self.content_type,
+                                                           self.content_object.pk)
 
 
 class Notification(models.Model):
@@ -54,18 +54,18 @@ class Notification(models.Model):
     A notification
     """
     class Meta:
-        verbose_name = 'Notification'
-        verbose_name_plural = 'Notifications'
+        verbose_name = _(u'Notification')
+        verbose_name_plural = _(u'Notifications')
 
-    subscription = models.ForeignKey('Subscription', related_name='subscription', db_index=True)
-    pubdate = models.DateTimeField(u'Date de création', auto_now_add=True, db_index=True)
+    subscription = models.ForeignKey(_(u'Subscription'), related_name='subscription', db_index=True)
+    pubdate = models.DateTimeField(_(u'Date de création'), auto_now_add=True, db_index=True)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    is_read = models.BooleanField('Lue', default=False, db_index=True)
+    is_read = models.BooleanField(_(u'Lue'), default=False, db_index=True)
 
     def __unicode__(self):
-        return u'Notification du membre "{0}" à propos de : {1} #{2}'\
+        return _(u'Notification du membre "{0}" à propos de : {1} #{2}')\
             .format(self.subscription.profile, self.content_type, self.content_object.pk)
 
     def get_author(self):
@@ -108,8 +108,8 @@ def send_notification(content_subscription, content_notification, type_notificat
                 subscription.last_notification=notification
                 subscription.save()
                 if subscription.by_email:
-                    subject = u"{} - {} : {}".format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
-                    from_email = "{} <{}>".format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
+                    subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
+                    from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
 
                     receiver = subscription.profile.user
                     context = {
