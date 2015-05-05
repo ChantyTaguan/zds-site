@@ -39,7 +39,7 @@ class Subscription(models.Model):
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    last_notification = models.ForeignKey(_(u'Notification'), related_name="last_notification", null=True, default=None)
+    last_notification = models.ForeignKey(u'Notification', related_name="last_notification", null=True, default=None)
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux notifications ' \
@@ -57,7 +57,7 @@ class Notification(models.Model):
         verbose_name = _(u'Notification')
         verbose_name_plural = _(u'Notifications')
 
-    subscription = models.ForeignKey(_(u'Subscription'), related_name='subscription', db_index=True)
+    subscription = models.ForeignKey(u'Subscription', related_name='subscription', db_index=True)
     pubdate = models.DateTimeField(_(u'Date de création'), auto_now_add=True, db_index=True)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
