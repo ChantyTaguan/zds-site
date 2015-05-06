@@ -11,14 +11,16 @@ from zds.notification.models import Notification, Subscription, activate_subscri
 from django.utils.translation import ugettext_lazy as _
 from zds.utils import get_current_user
 
+
+# General
 answer_unread = Signal()
 content_read = Signal()
 
-# General
 @receiver(answer_unread)
 def unread_post_event(sender, **kwargs):
     post = kwargs.get('instance')
     send_notification(content_subscription=post.topic, content_notification=post, type_notification='NEW_CONTENT')
+
 
 @receiver(content_read)
 def test_signals(sender, **kwargs):
@@ -65,10 +67,7 @@ def new_reaction_event(sender, **kwargs):
         # Follow topic on answering
         activate_subscription(reaction.article, is_multiple=False)
 
-@receiver(content_read, sender=Article)
-def read_post_event(sender, **kwargs):
-    article = kwargs.get('instance')
-    mark_notification_read(article)
+
 
 
 def send_notification(content_subscription, content_notification, type_notification='NEW_CONTENT'):
