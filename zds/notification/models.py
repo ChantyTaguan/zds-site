@@ -29,7 +29,7 @@ class Subscription(models.Model):
 
     profile = models.ForeignKey(Profile, related_name='subscriptor', db_index=True)
     type = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=TYPE_CHOICES,
         default='NEW_CONTENT', db_index=True)
     pubdate = models.DateTimeField(_(u'Date de création'), auto_now_add=True, db_index=True)
@@ -85,55 +85,6 @@ class Notification(models.Model):
         else:
             return self.content_object.title
 
-def send_notification(content_subscription, content_notification, type_notification='NEW_CONTENT'):
-    if content_subscription is None:
-        return
-    elif content_subscription is not None:
-        content_subscription_type = ContentType.objects.get_for_model(content_subscription)
-        subscription_list = Subscription.objects\
-            .filter(object_id=content_subscription.pk, content_type__pk=content_subscription_type.pk,
-                    is_active=True, type=type_notification)
-        action_by = get_current_user()
-        for subscription in subscription_list:
-            if action_by == subscription.profile.user:
-                continue
-            elif not subscription.is_multiple and subscription.last_notification is not None and not subscription.last_notification.is_read:
-                # there's already an unread notification for that subscription and only ne is allowed
-                if subscription.last_notification.content_object.position > content_notification.position:
-                    # if the content of the new notification is older, it replaces the current notification
-                    subscription.last_notification.content_object = content_notification
-                    subscription.last_notification.save()
-                    subscription.save()
-            else:
-                notification = Notification(subscription=subscription, content_object=content_notification)
-                notification.save()
-                subscription.last_notification=notification
-                subscription.save()
-                if subscription.by_email:
-                    subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
-                    from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
-
-                    receiver = subscription.profile.user
-                    context = {
-                        'username': receiver.username,
-                        'title': notification.get_title(),
-                        'url': settings.ZDS_APP['site']['url'] + notification.get_url(),
-                        'author': notification.get_author().user.username,
-                        'site_name': settings.ZDS_APP['site']['litteral_name']
-                    }
-                    message_html = render_to_string(
-                        'email/notification/'
-                        + subscription.type.lower()
-                        + '/' + content_subscription_type.model + '.html', context)
-                    message_txt = render_to_string(
-                        'email/notification/'
-                        + subscription.type.lower()
-                        + '/' + content_subscription_type.model + '.txt', context)
-
-                    msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
-                    msg.attach_alternative(message_html, "text/html")
-                    msg.send()
-
 
 def activate_subscription(content_subscription, user=None, type_subscription=None, by_email=False, is_multiple=True):
     """create a subscription if it does not exists, activate the existing subscription if it's not active"""
@@ -164,6 +115,7 @@ def activate_subscription(content_subscription, user=None, type_subscription=Non
             if by_email:
                 existing.by_email = True
             existing.save()
+
 
 def deactivate_email_subscription(content_subscription, user=None, type_subscription='NEW_CONTENT'):
     """Deactivate the email subscription if it does exists and is active"""
@@ -196,31 +148,6 @@ def deactivate_subscription(content_subscription, user=None, type_subscription='
         existing.save()
     except Subscription.DoesNotExist:
         existing = None
-
-
-def mark_notification_read(content):
-    user = get_current_user()
-    content_type = ContentType.objects.get_for_model(content)
-
-    try:
-        notif = Notification.objects.get(subscription__profile=user.profile, is_read=False,
-                                         subscription__object_id=content.pk,
-                                         subscription__content_type__pk=content_type.pk,
-                                         subscription__is_multiple=False)
-
-    except Notification.DoesNotExist:
-        notif = None
-    if notif is not None:
-        notif.is_read = True
-        notif.save()
-
-    notifications = Notification.objects.filter(subscription__profile=user.profile, is_read=False,
-                                    object_id=content.pk,
-                                    content_type__pk=content_type.pk)
-
-    for notif in notifications:
-        notif.is_read = True
-        notif.save()
 
 
 def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT', by_email=False):

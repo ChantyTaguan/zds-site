@@ -3,7 +3,7 @@
 from datetime import datetime
 from operator import attrgetter
 from zds.member.models import Profile
-from zds.notification.models import activate_subscription, send_notification, mark_notification_read, \
+from zds.notification.models import activate_subscription, \
     deactivate_subscription
 
 try:
@@ -48,7 +48,9 @@ from django.utils.translation import ugettext as _
 
 from .forms import ArticleForm, ReactionForm, ActivJsForm
 from .models import Article, get_prev_article, get_next_article, Validation, \
-    Reaction, never_read, mark_read
+    Reaction
+
+from zds.notification.signals import *
 
 
 def index(request):
@@ -160,8 +162,9 @@ def view_online(request, article_pk, article_slug):
         # We check if he can post an article or not with
         # antispam filter.
         article_version['antispam'] = article.antispam()
-        # If the user is never read, we mark this article read.
-        mark_notification_read(article)
+
+        # we mark this article read.
+        content_read.send(sender=article.__class__)
 
     # Find all reactions of the article.
     reactions = Reaction.objects\
@@ -1153,12 +1156,6 @@ def answer(request):
 
                 article.last_reaction = reaction
                 article.save()
-
-                send_notification(content_subscription=article, content_notification=reaction,
-                                  type_notification='NEW_CONTENT')
-
-                # Follow topic on answering
-                activate_subscription(article, is_multiple=False)
 
                 return redirect(reaction.get_absolute_url())
             else:

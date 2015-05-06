@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 import json
-
 from django.conf import settings
+
 from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -16,7 +16,6 @@ from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import redirect, get_object_or_404, render, render_to_response
 from django.views.decorators.http import require_POST
 from django.utils.translation import ugettext as _
-
 from haystack.inputs import AutoQuery
 from haystack.query import SearchQuerySet
 
@@ -26,7 +25,7 @@ from models import Category, Forum, Topic, Post, never_read, \
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import mark_notification_read, send_notification, activate_subscription, \
+from zds.notification.models import activate_subscription, \
     deactivate_subscription, get_subscribers, deactivate_email_subscription
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
@@ -34,6 +33,8 @@ from zds.utils.mps import send_mp
 from zds.utils.paginator import paginator_range
 from zds.utils.templatetags.emarkdown import emarkdown
 from zds.utils.templatetags.topbar import top_categories
+
+from zds.notification import signals
 
 
 def index(request):
@@ -146,11 +147,10 @@ def topic(request, topic_pk, topic_slug):
     if request.user.is_authenticated():
         if never_read(topic):
             mark_read(topic)
-        mark_notification_read(topic)
 
+        signals.content_read.send(sender=None, instance=topic)
 
     # Retrieves all posts of the topic and use paginator with them.
-
     posts = \
         Post.objects.filter(topic__pk=topic.pk) \
         .select_related("author__profile") \
@@ -321,14 +321,6 @@ def new(request):
             n_topic.last_message = post
             n_topic.save()
 
-            # Follow the topic
-            activate_subscription(n_topic, is_multiple=True)
-
-            # Notify the forum followers
-            send_notification(forum, n_topic)
-            # Notify the tag followers
-            for tag in n_topic.tags.all():
-                send_notification(tag, n_topic)
             return redirect(n_topic.get_absolute_url())
     else:
         form = TopicForm()
@@ -582,11 +574,6 @@ def answer(request):
                 post.save()
                 g_topic.last_message = post
                 g_topic.save()
-
-                send_notification(content_subscription=g_topic, content_notification=post, type_notification='NEW_CONTENT')
-
-                # Follow topic on answering
-                activate_subscription(g_topic, is_multiple=False)
 
                 return redirect(post.get_absolute_url())
             else:
@@ -858,8 +845,6 @@ def unread_post(request):
     if not post.topic.forum.can_read(request.user):
         raise PermissionDenied
 
-    send_notification(post.topic, topic, post.author)
-
     t = TopicRead.objects.filter(topic=post.topic, user=request.user).first()
     if t is None:
         if post.position > 1:
@@ -873,6 +858,8 @@ def unread_post(request):
             t.save()
         else:
             t.delete()
+
+    signals.answer_unread.send(sender=post.__class__)
 
     return redirect(reverse("zds.forum.views.details", args=[post.topic.forum.category.slug, post.topic.forum.slug]))
 
