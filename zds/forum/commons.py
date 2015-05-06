@@ -8,7 +8,8 @@ from django.views.generic.detail import SingleObjectMixin
 from zds.forum.models import Forum, Post, TopicRead
 from django.utils.translation import ugettext as _
 from zds.notification.models import get_subscribers, deactivate_subscription, activate_subscription, \
-    deactivate_email_subscription, send_notification
+    deactivate_email_subscription
+from zds.notification import signals
 from zds.utils.forums import get_tag_by_title
 from zds.utils.models import Alert, CommentLike, CommentDislike
 
@@ -144,8 +145,6 @@ class PostEditMixin(object):
         Marks a post unread so we create a notification between the user and the topic host of the post.
         But, if there is only one post in the topic, we mark the topic unread but we don't create a notification.
         """
-        send_notification(post.topic, post.topic, post.author)
-
         topic_read = TopicRead.objects.filter(topic=post.topic, user=user).first()
         if topic_read is None and post.position > 1:
             unread = Post.objects.filter(topic=post.topic, position=(post.position - 1)).first()
@@ -158,6 +157,8 @@ class PostEditMixin(object):
                 topic_read.save()
             else:
                 topic_read.delete()
+
+        signals.answer_unread.send(sender=post.__class__)
 
     @staticmethod
     def perform_like_post(post, user):

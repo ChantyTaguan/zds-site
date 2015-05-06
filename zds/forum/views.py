@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import json
-
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -21,11 +20,10 @@ from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
-from zds.notification.models import mark_notification_read, activate_subscription, send_notification, \
-    deactivate_subscription
+from zds.notification.models import activate_subscription, deactivate_subscription
 from django.views.decorators.http import require_POST
-from django.utils.translation import ugettext_lazy as _
 
+from django.utils.translation import ugettext_lazy as _
 from haystack.inputs import AutoQuery
 from haystack.query import SearchQuerySet
 
@@ -35,6 +33,8 @@ from zds.utils.mixins import FilterMixin
 from zds.utils.models import Alert, Tag
 from zds.utils.mps import send_mp
 from zds.utils.paginator import paginator_range, ZdSPagingListView
+
+from zds.notification import signals
 
 
 class CategoriesForumsListView(ListView):
@@ -133,7 +133,7 @@ class TopicPostsListView(ZdSPagingListView, SingleObjectMixin):
         if self.request.user.is_authenticated():
             if never_read(self.object):
                 mark_read(self.object)
-            mark_notification_read(self.object)
+            signals.content_read.send(sender=None, instance=self.object)
         return context
 
     def get_object(self, queryset=None):
@@ -199,15 +199,6 @@ class TopicNew(CreateView, SingleObjectMixin):
             form.data['text'],
             None
         )
-        # Follow the topic
-        activate_subscription(topic, is_multiple=True)
-
-        # Notify the forum followers
-        send_notification(self.object, topic)
-
-        # Notify the tag followers
-        for tag in topic.tags.all():
-            send_notification(tag, topic)
         return redirect(topic.get_absolute_url())
 
 
@@ -310,10 +301,6 @@ class TopicEdit(UpdateView, SingleObjectMixin, TopicEditMixin):
 
     def form_valid(self, form):
         topic = self.perform_edit_info(self.object, self.request.POST, self.request.user)
-        send_notification(content_subscription=topic, content_notification=topic.first_post(), type_notification='NEW_CONTENT')
-
-        # Follow topic on answering
-        activate_subscription(topic)
         return redirect(topic.get_absolute_url())
 
 
@@ -416,11 +403,6 @@ class PostNew(CreatePostView):
 
     def form_valid(self, form):
         topic = send_post(self.request, self.object, self.request.user, form.data.get('text'), send_by_mail=True)
-
-        send_notification(content_subscription=topic, content_notification=topic.last_message, type_notification='NEW_CONTENT')
-
-        # Follow topic on answering
-        activate_subscription(topic, is_multiple=False)
         return redirect(topic.last_message.get_absolute_url())
 
     def get_object(self, queryset=None):
