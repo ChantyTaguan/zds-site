@@ -40,25 +40,3 @@ class SubscriptionTest(TestCase):
             self.topic1.pk,
             ContentType.objects.get(app_label="forum", model="topic"))
         self.assertEqual(title, self.subscription.__unicode__())
-
-    def test_subscription_exists_create_topic(self):
-        result = self.client.post(
-            reverse('zds.forum.views.new') + '?forum={0}'
-            .format(self.forum12.pk),
-            {'title': u'Super sujet',
-             'subtitle': u'Pour tester les notifs',
-             'text': u'En tout cas la création d\'un abonnement'
-            },
-            follow=False)
-        self.assertEqual(result.status_code, 302)
-
-        content_type = ContentType.objects.get(model="topic")
-        topic = Topic.objects.filter(title=u'Super sujet').first()
-
-        subscription_list = Subscription.objects.all()
-        cpt = 0
-        for sub in subscription_list:
-            cpt += 1
-
-        subscription = Subscription.objects.filter(object_id=topic.pk, content_type=content_type, profile=self.user.profile).first();
-        self.assertEqual(subscription.is_active, True)
