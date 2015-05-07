@@ -9,23 +9,24 @@ from zds.article.models import Reaction, Article
 from zds.forum.models import Topic, Post
 from zds.notification.models import Notification, Subscription, activate_subscription
 from django.utils.translation import ugettext_lazy as _
-from zds.utils import get_current_user
 
 
 # General
-answer_unread = Signal()
-content_read = Signal()
+answer_unread = Signal(providing_args=["instance", "user"])
+content_read = Signal(providing_args=["instance", "user"])
 
 @receiver(answer_unread)
 def unread_post_event(sender, **kwargs):
     post = kwargs.get('instance')
-    send_notification(content_subscription=post.topic, content_notification=post, type_notification='NEW_CONTENT')
+    user = kwargs.get('user')
+    send_notification(post.topic, post, user)
 
 
 @receiver(content_read)
 def test_signals(sender, **kwargs):
     content = kwargs.get('instance')
-    mark_notification_read(content)
+    user = kwargs.get('user')
+    mark_notification_read(content, user)
 
 # Forums
 @receiver(post_save, sender=Topic)
@@ -34,14 +35,14 @@ def saved_topic_event(sender, **kwargs):
         topic = kwargs.get('instance')
 
         # Notify the forum followers
-        send_notification(topic.forum, topic)
+        send_notification(topic.forum, topic, topic.author)
 
         # Notify the tag followers
         for tag in topic.tags.all():
-            send_notification(tag, topic)
+            send_notification(tag, topic, topic.author)
 
         # Follow the topic
-        activate_subscription(topic, is_multiple=False)
+        activate_subscription(topic, topic.author, is_multiple=False)
 
 
 @receiver(post_save, sender=Post)
@@ -49,10 +50,10 @@ def answer_topic_event(sender, **kwargs):
     if kwargs.get('created', True):
         post = kwargs.get('instance')
 
-        send_notification(content_subscription=post.topic, content_notification=post, type_notification='NEW_CONTENT')
+        send_notification(post.topic, post, post.author)
 
         # Follow topic on answering
-        activate_subscription(post.topic, is_multiple=False)
+        activate_subscription(post.topic, post.author, is_multiple=False)
 
 
 # Article
@@ -61,16 +62,13 @@ def new_reaction_event(sender, **kwargs):
     if kwargs.get('created', True):
         reaction = kwargs.get('instance')
 
-        send_notification(content_subscription=reaction.article, content_notification=reaction,
-                          type_notification='NEW_CONTENT')
+        send_notification(reaction.article, reaction, reaction.author)
 
         # Follow topic on answering
-        activate_subscription(reaction.article, is_multiple=False)
+        activate_subscription(reaction.article, reaction.author, is_multiple=False)
 
 
-
-
-def send_notification(content_subscription, content_notification, type_notification='NEW_CONTENT'):
+def send_notification(content_subscription, content_notification, action_by, type_notification='NEW_CONTENT'):
     if content_subscription is None:
         return
     elif content_subscription is not None:
@@ -78,7 +76,6 @@ def send_notification(content_subscription, content_notification, type_notificat
         subscription_list = Subscription.objects\
             .filter(object_id=content_subscription.pk, content_type__pk=content_subscription_type.pk,
                     is_active=True, type=type_notification)
-        action_by = get_current_user()
         for subscription in subscription_list:
             if action_by == subscription.profile.user:
                 continue
@@ -120,8 +117,7 @@ def send_notification(content_subscription, content_notification, type_notificat
                     msg.send()
 
 
-def mark_notification_read(content):
-    user = get_current_user()
+def mark_notification_read(content, user):
     content_type = ContentType.objects.get_for_model(content)
 
     try:

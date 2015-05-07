@@ -3,13 +3,10 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.generic import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.mail import EmailMultiAlternatives
 from django.utils.translation import ugettext_lazy as _
 
 from django.db import models
-from django.template.loader import render_to_string
 from zds.member.models import Profile
-from zds.utils import get_current_user
 
 TYPE_CHOICES = (
     ('UPDATE', 'Mise à jour'),
@@ -86,15 +83,11 @@ class Notification(models.Model):
             return self.content_object.title
 
 
-def activate_subscription(content_subscription, user=None, type_subscription=None, by_email=False, is_multiple=True):
+def activate_subscription(content_subscription, user, type_subscription='NEW_CONTENT', by_email=False, is_multiple=True):
     """create a subscription if it does not exists, activate the existing subscription if it's not active"""
 
     content_subscription_type = ContentType.objects.get_for_model(content_subscription)
 
-    if type_subscription is None:
-        type_subscription = 'NEW_CONTENT'
-    if user is None:
-        user = get_current_user()
     try:
         existing = Subscription.objects.get(object_id=content_subscription.pk,
                                             content_type__pk=content_subscription_type.pk,
@@ -117,13 +110,11 @@ def activate_subscription(content_subscription, user=None, type_subscription=Non
             existing.save()
 
 
-def deactivate_email_subscription(content_subscription, user=None, type_subscription='NEW_CONTENT'):
+def deactivate_email_subscription(content_subscription, user, type_subscription='NEW_CONTENT'):
     """Deactivate the email subscription if it does exists and is active"""
 
     content_subscription_type = ContentType.objects.get_for_model(content_subscription)
 
-    if user is None:
-        user = get_current_user()
     try:
         existing = Subscription.objects.get(object_id=content_subscription.pk,
                                             content_type__pk=content_subscription_type.pk,
@@ -133,13 +124,12 @@ def deactivate_email_subscription(content_subscription, user=None, type_subscrip
     except Subscription.DoesNotExist:
         existing = None
 
-def deactivate_subscription(content_subscription, user=None, type_subscription='NEW_CONTENT'):
+
+def deactivate_subscription(content_subscription, user, type_subscription='NEW_CONTENT'):
     """Deactivate the subscription if it does exists and is active"""
 
     content_subscription_type = ContentType.objects.get_for_model(content_subscription)
 
-    if user is None:
-        user = get_current_user()
     try:
         existing = Subscription.objects.get(object_id=content_subscription.pk,
                                             content_type__pk=content_subscription_type.pk,
@@ -150,9 +140,7 @@ def deactivate_subscription(content_subscription, user=None, type_subscription='
         existing = None
 
 
-def has_subscribed(content_subscription, user=None, type_subscription='NEW_CONTENT', by_email=False):
-    if user is None:
-        user = get_current_user()
+def has_subscribed(content_subscription, user, type_subscription='NEW_CONTENT', by_email=False):
 
     try:
         content_subscription_type = ContentType.objects.get_for_model(content_subscription)

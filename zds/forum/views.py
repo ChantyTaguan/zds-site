@@ -133,7 +133,7 @@ class TopicPostsListView(ZdSPagingListView, SingleObjectMixin):
         if self.request.user.is_authenticated():
             if never_read(self.object):
                 mark_read(self.object)
-            signals.content_read.send(sender=None, instance=self.object)
+            signals.content_read.send(sender=None, instance=self.object, user=self.request.user)
         return context
 
     def get_object(self, queryset=None):
@@ -692,10 +692,10 @@ def edit_notification_forum(request):
 
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(content, is_multiple=True)
+            activate_subscription(content, request.user, is_multiple=True)
             resp["follow"] = -1
         else:
-            deactivate_subscription(content)
+            deactivate_subscription(content, request.user)
             resp["follow"] = 1
 
     if request.is_ajax():
