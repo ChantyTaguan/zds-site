@@ -12,6 +12,7 @@ from zds.forum.models import never_read as never_read_topic, Post, TopicRead, To
 from zds.mp.models import PrivateTopic
 from zds.notification.models import Notification, has_subscribed, Subscription
 from zds.tutorial.models import Note, TutorialRead
+from zds.utils import get_current_user
 from zds.utils.models import Alert
 
 
@@ -96,15 +97,15 @@ def notif_url(notification):
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    return has_subscribed(content_subscription)
+    return has_subscribed(content_subscription, get_current_user())
 
 @register.filter('has_suscribed_email_new')
 def has_suscribed_email_new(content_subscription):
-    return has_subscribed(content_subscription, by_email=True)
+    return has_subscribed(content_subscription, get_current_user(), by_email=True)
 
 @register.filter('has_subscribed_update')
 def has_subscribed_update(content_subscription):
-    return has_subscribed(content_subscription, type_subscription='UPDATE')
+    return has_subscribed(content_subscription, get_current_user(), type_subscription='UPDATE')
 
 @register.filter('from_topic')
 def from_topic(notification):

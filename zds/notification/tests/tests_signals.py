@@ -111,5 +111,5 @@ class NotificationForumTest(TestCase):
 
         self.assertEqual(result.status_code, 200)
 
-        notification = Notification.objects.get(subscription__profile=self.profile1)
+        notification = Notification.objects.get(subscription__profile=self.profile2)
         self.assertEqual(notification.is_read, True)

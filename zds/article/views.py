@@ -3,8 +3,7 @@
 from datetime import datetime
 from operator import attrgetter
 from zds.member.models import Profile
-from zds.notification.models import activate_subscription, \
-    deactivate_subscription
+from zds.notification.models import deactivate_subscription
 
 try:
     import ujson as json_reader
@@ -164,7 +163,7 @@ def view_online(request, article_pk, article_slug):
         article_version['antispam'] = article.antispam()
 
         # we mark this article read.
-        content_read.send(sender=article.__class__)
+        content_read.send(sender=None, instance=article, user=request.user)
 
     # Find all reactions of the article.
     reactions = Reaction.objects\
@@ -727,7 +726,7 @@ def modify(request):
                     direct=False)
 
                 for author in article.authors.all():
-                    activate_subscription(article, user=author, is_multiple=False)
+                    activate_subscription(article, author, is_multiple=False)
 
                 return redirect(
                     article.get_absolute_url() +
@@ -897,10 +896,10 @@ def modify(request):
     if 'follow' in request.POST:
         resp = {}
         if data["follow"] == "1":
-            activate_subscription(article, is_multiple=False)
+            activate_subscription(article, request.user, is_multiple=False)
             resp["follow"] = -1
         else:
-            deactivate_subscription(article)
+            deactivate_subscription(article, request.user)
             resp["follow"] = 1
         if request.is_ajax():
             return HttpResponse(json_writter.dumps(resp), content_type='application/json')

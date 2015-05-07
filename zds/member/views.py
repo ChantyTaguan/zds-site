@@ -25,7 +25,7 @@ from django.views.generic import DetailView, UpdateView, CreateView
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
     OldTutoForm, PromoteMemberForm, KarmaForm
-from zds.notification.models import activate_subscription, Subscription, Notification
+from zds.notification.models import activate_subscription, Subscription, Notification, deactivate_subscription
 from zds.utils.models import Comment, CommentLike, CommentDislike
 from models import Profile, TokenForgotPassword, TokenRegister, KarmaNote
 from zds.article.models import Article
@@ -918,13 +918,13 @@ def settings_promote(request, user_pk):
                         topics_followed = Topic.objects.filter(topicfollowed__user=user,
                                                                forum__group=group)
                         for topic in topics_followed:
-                            activate_subscription(topic, user, is_multiple=False)
+                            deactivate_subscription(topic, user)
         else:
             for group in usergroups:
                 topics_followed = Topic.objects.filter(topicfollowed__user=user,
                                                        forum__group=group)
                 for topic in topics_followed:
-                    activate_subscription(topic, user, is_multiple=False)
+                    deactivate_subscription(topic, user)
             user.groups.clear()
             messages.warning(request, _(u'{0} n\'appartient (plus ?) à aucun groupe.')
                              .format(user.username))

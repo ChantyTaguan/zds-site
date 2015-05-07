@@ -43,8 +43,6 @@ def create_topic(
     n_topic.last_message = post
     n_topic.save()
 
-    activate_subscription(n_topic, user=author, type='NEW_CONTENT', is_multiple=False)
-
     return n_topic
 
 

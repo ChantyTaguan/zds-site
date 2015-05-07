@@ -148,7 +148,7 @@ def topic(request, topic_pk, topic_slug):
         if never_read(topic):
             mark_read(topic)
 
-        signals.content_read.send(sender=None, instance=topic)
+        signals.content_read.send(sender=None, instance=topic, user=request.user)
 
     # Retrieves all posts of the topic and use paginator with them.
     posts = \
@@ -437,17 +437,17 @@ def edit(request):
     g_topic = get_object_or_404(Topic, pk=topic_pk)
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(g_topic, is_multiple=False)
+            activate_subscription(g_topic, request.user, is_multiple=False)
             resp["follow"] = -1
         else:
-            deactivate_subscription(g_topic)
+            deactivate_subscription(g_topic, request.user)
             resp["follow"] = 1
     if "email" in data:
         if data["email"] == "1":
-            activate_subscription(g_topic, by_email=True, is_multiple=False)
+            activate_subscription(g_topic, request.user, by_email=True, is_multiple=False)
             resp["email"] = -1
         else:
-            deactivate_email_subscription(g_topic)
+            deactivate_email_subscription(g_topic, request.user)
             resp["follow"] = 1
     if request.user == g_topic.author \
             or request.user.has_perm("forum.change_topic"):
@@ -859,7 +859,7 @@ def unread_post(request):
         else:
             t.delete()
 
-    signals.answer_unread.send(sender=post.__class__)
+    signals.answer_unread.send(sender=None, instance=post, user=request.user)
 
     return redirect(reverse("zds.forum.views.details", args=[post.topic.forum.category.slug, post.topic.forum.slug]))
 
@@ -1182,10 +1182,10 @@ def edit_notification_forum(request):
 
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(content, is_multiple=True)
+            activate_subscription(content, request.user, is_multiple=True)
             resp["follow"] = -1
         else:
-            deactivate_subscription(content)
+            deactivate_subscription(content, request.user)
             resp["follow"] = 1
 
     if request.is_ajax():
