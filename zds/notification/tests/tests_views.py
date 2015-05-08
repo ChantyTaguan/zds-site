@@ -52,6 +52,32 @@ class NotificationListViewTest(TestCase):
         for i in range(0, size):
             self.assertEqual(response.context['object_list'][i], notifications[size - 1 - i])
 
+    def test_success_list_notifications_filter_by_topic(self):
+        """
+        Gets list of notifications filter by topic.
+        """
+        size = 1
+        notifications = generate_x_notifications_on_topics(self, self.profile, size)
+
+        response = self.client.get(reverse('notification-list') + '?filter=topic')
+
+        self.assertEqual(200, response.status_code)
+        for i in range(0, size):
+            self.assertEqual(response.context['object_list'][i], notifications[i])
+
+    def test_success_list_notifications_with_filter_sort_and_order(self):
+        """
+        Gets list of notifications with a filter, a sort and an order.
+        """
+        size = 2
+        notifications = generate_x_notifications_on_topics(self, self.profile, size)
+
+        response = self.client.get(reverse('notification-list') + '?filter=topic&sort=creation&order=desc')
+
+        self.assertEqual(200, response.status_code)
+        for i in range(0, size):
+            self.assertEqual(response.context['object_list'][i], notifications[size - 1 - i])
+
 
 def generate_x_notifications_on_topics(self, profile, size):
     another_profile = ProfileFactory()
