@@ -31,3 +31,31 @@
 
     {% include "misc/pagination.part.html" with position="bottom" %}
 {% endblock %}
+
+{% block sidebar_blocks %}
+    <div class="mobile-menu-bloc mobile-all-links" data-title="{% trans 'Trier' %}">
+        <h3>{% trans 'Trier' %}</h3>
+        <ul>
+            <li>
+                <a href="{% url "notification-list" %}?sort=creation{% if order %}&order={{ order }}{% endif %}" class="ico-after gear {% if sort == "creation" %}selected{% endif %}">
+                    {%  trans 'Par date de création' %}
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="mobile-menu-bloc mobile-all-links" data-title="{% trans 'Ordre' %}">
+        <h3>{% trans 'Ordre' %}</h3>
+        <ul>
+            <li>
+                <a href="{% url "notification-list" %}?order=asc{% if sort %}&sort={{ sort }}{% endif %}" class="ico-after move {% if order == "asc" %}selected{% endif %}">
+                    {%  trans 'Ascendant' %}
+                </a>
+            </li>
+            <li>
+                <a href="{% url "notification-list" %}?order=desc{% if type %}&type={{ type }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="ico-after move {% if order == "desc" %}selected{% endif %}">
+                    {%  trans 'Descendant' %}
+                </a>
+            </li>
+        </ul>
+    </div>
+{% endblock %}
