@@ -7,6 +7,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from django.db import models
 from zds.member.models import Profile
+from zds.notification.managers import NotificationManager
 
 TYPE_CHOICES = (
     ('UPDATE', 'Mise à jour'),
@@ -60,6 +61,7 @@ class Notification(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
     is_read = models.BooleanField(_(u'Lue'), default=False, db_index=True)
+    objects = NotificationManager()
 
     def __unicode__(self):
         return _(u'Notification du membre "{0}" à propos de : {1} #{2}')\

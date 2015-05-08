@@ -1,9 +1,9 @@
 # coding: utf-8
 
 from django.conf.urls import patterns, url
-from zds.notification.views import NotificationList
+from zds.notification.views import NotificationListView
 
 
 urlpatterns = patterns('',
-                       url(r'^$', NotificationList.as_view(), name='notification-list'),
+                       url(r'^$', NotificationListView.as_view(), name='notification-list'),
                        )
