@@ -7,7 +7,7 @@ from django.dispatch import receiver, Signal
 from zds.article.models import Reaction
 from zds.forum.models import Topic, Post
 
-from zds.notification.models import AnswerSubscription, NewTopicSubscription
+from zds.notification.models import AnswerSubscription, NewTopicSubscription, PublicationSubscription, Notification
 
 
 def disable_for_loaddata(signal_handler):
@@ -19,25 +19,46 @@ def disable_for_loaddata(signal_handler):
         signal_handler(*args, **kwargs)
     return wrapper
 
-answer_unread = Signal(providing_args=["instance", "user"])
-content_read = Signal(providing_args=["instance", "user"])
+answer_unread = Signal(providing_args=["instance", "user", "answer_to"])
+topic_read = Signal(providing_args=["instance", "user"])
+publication_read = Signal(providing_args=["instance", "user"])
 
 @receiver(answer_unread)
 @disable_for_loaddata
-def unread_post_event(sender, **kwargs):
-    post = kwargs.get('instance')
+def unread_answer_event(sender, **kwargs):
+    answer = kwargs.get('instance')
     user = kwargs.get('user')
-    # content_subscription_type = ContentType.objects.get_for_model(content_subscription)
-    # AnswerSubscription.objects.filter()
-    # send_notification(post.topic, post, user)
+    answer_to = kwargs.get('answer_to')
+    subscription = AnswerSubscription(profile=user.profile, content_object=answer_to)
+    subscription.send_notification(answer=answer, send_email=False)
 
 
-@receiver(content_read)
-@disable_for_loaddata
-def test_signals(sender, **kwargs):
-    content = kwargs.get('instance')
+@receiver(publication_read)
+def mark_publication_notifications_read(sender, **kwargs):
+    publication = kwargs.get('instance')
     user = kwargs.get('user')
-    # mark_notification_read(content, user)
+    subscription = PublicationSubscription(profile=user, content_object=publication)
+    subscription.mark_notification_read()
+
+    answer_subscription = AnswerSubscription(profile=user, content_object=publication)
+    answer_subscription.mark_notification_read()
+
+
+@receiver(topic_read)
+def mark_topic_notifications_read(sender, **kwargs):
+    topic = kwargs.get('instance')
+    user = kwargs.get('user')
+    subscription = AnswerSubscription(profile=user.profile, content_object=topic)
+    subscription.mark_notification_read()
+
+    content_notification_type = ContentType.objects.get(model="topic")
+    notifications = Notification.objects.filter(subscription__profile=user.profile,
+                                                content_type__pk=content_notification_type.pk,
+                                                object_id=topic.pk)
+    for notification in notifications:
+        notification.is_read = True
+        notification.save()
+
 
 # Forums
 @receiver(post_save, sender=Topic)
@@ -52,7 +73,8 @@ def saved_topic_event(sender, **kwargs):
             .filter(content_type__pk=content_subscription_type.pk,
                     object_id=topic.forum.pk, active=True)
         for subscription in subscription_list:
-            subscription.send_notification(topic=topic)
+            if subscription.profile != topic.author.profile:
+                subscription.send_notification(topic=topic)
 
         # Notify the tag followers
         content_subscription_type = ContentType.objects.get(model="tag")
@@ -61,7 +83,8 @@ def saved_topic_event(sender, **kwargs):
                 .filter(content_type__pk=content_subscription_type.pk,
                         object_id=topic.forum.pk, active=True)
             for subscription in subscription_list:
-                subscription.send_notification(topic=topic)
+                if subscription.profile != topic.author.profile:
+                    subscription.send_notification(topic=topic)
 
         # Follow the topic
         subscription = AnswerSubscription(profile=topic.author.profile, content_object=topic)
@@ -79,7 +102,8 @@ def answer_topic_event(sender, **kwargs):
             .filter(content_type__pk=content_subscription_type.pk,
                     object_id=post.topic.pk, active=True)
         for subscription in subscription_list:
-            subscription.send_notification(answer=post)
+            if subscription.profile != post.author.profile:
+                subscription.send_notification(answer=post)
 
         # Follow topic on answering
         subscription = AnswerSubscription(profile=post.author.profile, content_object=post.topic)
@@ -98,7 +122,8 @@ def new_reaction_event(sender, **kwargs):
             .filter(content_type__pk=content_subscription_type.pk,
                     object_id=reaction.article.pk, active=True)
         for subscription in subscription_list:
-            subscription.send_notification(answer=reaction)
+            if subscription.profile != reaction.author.profile:
+                subscription.send_notification(answer=reaction)
 
         # Follow article on answering
         subscription = AnswerSubscription(profile=reaction.author.profile, content_object=reaction.article)
