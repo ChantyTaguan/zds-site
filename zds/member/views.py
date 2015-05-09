@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
+from django.contrib.contenttypes.models import ContentType
 from django.core.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.core.mail import EmailMultiAlternatives
@@ -26,7 +27,7 @@ from django.views.generic import DetailView, UpdateView, CreateView
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
     OldTutoForm, PromoteMemberForm, KarmaForm
-from zds.notification.models import activate_subscription, Subscription, Notification, deactivate_subscription
+from zds.notification.models import AnswerSubscription
 from zds.utils.models import Comment, CommentLike, CommentDislike
 from models import Profile, TokenForgotPassword, TokenRegister, KarmaNote
 from zds.article.models import Article
@@ -918,17 +919,25 @@ def settings_promote(request, user_pk):
                         user.groups.remove(group)
                         messages.warning(request, _(u'{0} n\'appartient maintenant plus au groupe {1}.')
                                          .format(user.username, group.name))
-                        topics_followed = Topic.objects.filter(topicfollowed__user=user,
-                                                               forum__group=group)
-                        for topic in topics_followed:
-                            deactivate_subscription(topic, user)
+
+                        content_subscription_type = ContentType.objects.get(model="topic")
+                        subscription_list = AnswerSubscription.objects\
+                            .filter(profile=user.profile,
+                                    content_type__pk=content_subscription_type.pk ,active=True)
+                        for subscription in subscription_list:
+                            if not subscription.content_object.forum.can_read(user):
+                                subscription.deactivate()
+
         else:
-            for group in usergroups:
-                topics_followed = Topic.objects.filter(topicfollowed__user=user,
-                                                       forum__group=group)
-                for topic in topics_followed:
-                    deactivate_subscription(topic, user)
+
             user.groups.clear()
+            content_subscription_type = ContentType.objects.get(model="topic")
+            subscription_list = AnswerSubscription.objects\
+                .filter(profile=user.profile,
+                        content_type__pk=content_subscription_type.pk, active=True)
+            for subscription in subscription_list:
+                if not subscription.content_object.forum.can_read(user):
+                    subscription.deactivate()
             messages.warning(request, _(u'{0} n\'appartient (plus ?) à aucun groupe.')
                              .format(user.username))
 

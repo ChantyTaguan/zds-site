@@ -20,7 +20,7 @@ from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
-from zds.notification.models import activate_subscription, deactivate_subscription
+from zds.notification.models import NewTopicSubscription
 from django.views.decorators.http import require_POST
 
 from django.utils.translation import ugettext_lazy as _
@@ -691,11 +691,12 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
+        subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
         if data["follow"] == "1":
-            activate_subscription(content, request.user, is_multiple=True)
+            subscription.activate_or_save()
             resp["follow"] = -1
         else:
-            deactivate_subscription(content, request.user)
+            subscription.deactivate()
             resp["follow"] = 1
 
     if request.is_ajax():

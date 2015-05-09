@@ -7,8 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic.detail import SingleObjectMixin
 from zds.forum.models import Forum, Post, TopicRead
 from django.utils.translation import ugettext as _
-from zds.notification.models import get_subscribers, deactivate_subscription, activate_subscription, \
-    deactivate_email_subscription
+from zds.notification.models import AnswerSubscription
 from zds.notification import signals
 from zds.utils.forums import get_tag_by_title
 from zds.utils.models import Alert, CommentLike, CommentDislike
@@ -17,18 +16,20 @@ from zds.utils.models import Alert, CommentLike, CommentDislike
 class TopicEditMixin(object):
     @staticmethod
     def perform_follow(active, topic, user):
+        subscription = AnswerSubscription(profile=user.profile, content_object=topic)
         if active:
-            activate_subscription(topic, user=user, is_multiple=False)
+            subscription.activate_or_save()
             return -1
-        deactivate_subscription(topic, user=user)
+        subscription.deactivate()
         return 1
 
     @staticmethod
     def perform_follow_by_email(active, topic, user):
+        subscription = AnswerSubscription(profile=user.profile, content_object=topic)
         if active:
-            activate_subscription(topic, user=user, by_email=True, is_multiple=False)
+            subscription.activate_or_save(by_email=True)
             return -1
-        deactivate_email_subscription(topic, user=user)
+        subscription.activate_or_save(by_email=False)
         return 1
 
     @staticmethod
@@ -75,10 +76,12 @@ class TopicEditMixin(object):
 
             # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
             # This avoids unreachable notifications.
-            followers = get_subscribers(topic)
+            subscription = AnswerSubscription(profile=None, content_object=topic)
+            followers = subscription.get_subscribers()
             for follower in followers:
                 if not forum.can_read(follower):
-                    deactivate_subscription(topic, follower)
+                    subscription = AnswerSubscription(profile=follower.profile, content_object=topic)
+                    subscription.deactivate()
             messages.success(request,
                              _(u"Le sujet « {0} » a bien été déplacé dans « {1} ».").format(topic.title, forum.title))
         else:

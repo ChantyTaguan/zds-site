@@ -3,7 +3,7 @@
 from datetime import datetime
 from operator import attrgetter
 from zds.member.models import Profile
-from zds.notification.models import deactivate_subscription
+from zds.notification.models import AnswerSubscription
 
 try:
     import ujson as json_reader
@@ -732,8 +732,10 @@ def modify(request):
                     True,
                     direct=False)
 
+
                 for author in article.authors.all():
-                    activate_subscription(article, author, is_multiple=False)
+                    subscription = AnswerSubscription(profile=author.profile, content_object=article)
+                    subscription.activate_or_save()
 
                 return redirect(
                     article.get_absolute_url() +
@@ -902,11 +904,12 @@ def modify(request):
 
     if 'follow' in request.POST:
         resp = {}
+        subscription = AnswerSubscription(profile=request.user.profile, content_object=article)
         if data["follow"] == "1":
-            activate_subscription(article, request.user, is_multiple=False)
+            subscription.activate_or_save()
             resp["follow"] = -1
         else:
-            deactivate_subscription(article, request.user)
+            subscription.deactivate()
             resp["follow"] = 1
         if request.is_ajax():
             return HttpResponse(json_writter.dumps(resp), content_type='application/json')
