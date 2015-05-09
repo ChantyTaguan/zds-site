@@ -436,20 +436,30 @@ def edit(request):
     data = request.POST
     resp = {}
     g_topic = get_object_or_404(Topic, pk=topic_pk)
-    subscription = AnswerSubscription(profile=request.user.profile, content_object=g_topic)
+    subscription = AnswerSubscription.get_existing(request.user.profile, g_topic)
     if "follow" in data:
         if data["follow"] == "1":
-            subscription.activate_or_save()
+            if subscription is not None:
+                subscription.activate()
+            else:
+                subscription = AnswerSubscription(profile=request.user.profile, content_object=g_topic)
+                subscription.save()
             resp["follow"] = -1
         else:
-            subscription.deactivate()
+            if subscription is not None:
+                subscription.deactivate()
             resp["follow"] = 1
     if "email" in data:
         if data["email"] == "1":
-            subscription.activate_or_save(by_email=True)
+            if subscription is not None:
+                subscription.activate(by_email=True)
+            else:
+                subscription = AnswerSubscription(profile=request.user.profile, content_object=g_topic, by_email=True)
+                subscription.save()
             resp["email"] = -1
         else:
-            subscription.activate_or_save(by_email=False)
+            if subscription is not None:
+                subscription.deactivate_email()
             resp["follow"] = 1
     if request.user == g_topic.author \
             or request.user.has_perm("forum.change_topic"):
@@ -1183,12 +1193,17 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
-        subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
+        subscription = NewTopicSubscription.get_existing(request.user.profile, content)
         if data["follow"] == "1":
-            subscription.activate_or_save()
+            if subscription is not None:
+                subscription.activate()
+            else:
+                subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
+                subscription.save()
             resp["follow"] = -1
         else:
-            subscription.deactivate()
+            if subscription is not None:
+                subscription.deactivate()
             resp["follow"] = 1
 
     if request.is_ajax():
