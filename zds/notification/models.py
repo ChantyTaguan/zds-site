@@ -71,20 +71,20 @@ class Subscription(models.Model):
             existing.save()
 
     def is_active(self):
-        try:
-            existing = self.get_existing()
-        except Subscription.DoesNotExist:
-            return False
+        existing = self.get_existing();
 
-        return existing.active
+        if existing is None:
+            return False
+        else:
+            return existing.active
 
     def is_by_email(self):
-        try:
-            existing = self.get_existing()
-        except Subscription.DoesNotExist:
-            return False
+        existing = self.get_existing();
 
-        return existing.active and existing.by_email
+        if existing is None:
+            return False
+        else:
+            return existing.active and existing.by_email
 
     def get_subscribers(self, only_by_email=False):
         users = []
@@ -121,12 +121,16 @@ class AnswerSubscription(Subscription):
             .format(self.profile, self.content_type, self.object_id)
 
     def get_existing(self):
-        return AnswerSubscription.objects.get(
-            object_id=self.object_id,
-            content_type__pk=self.content_type.pk,
-            profile=self.profile)
+        try:
+            existing = AnswerSubscription.objects.get(
+                object_id=self.object_id,
+                content_type__pk=self.content_type.pk,
+                profile=self.profile)
+        except AnswerSubscription.DoesNotExist:
+            existing = None
+        return existing
 
-    def send_notification(self, answer=None):
+    def send_notification(self, answer=None, send_email=True):
         if self.last_notification is None or self.last_notification.is_read:
             notification = Notification(subscription=self, content_object=answer, sender=answer.author.profile)
             notification.url = answer.get_absolute_url()
@@ -134,7 +138,7 @@ class AnswerSubscription(Subscription):
             notification.save()
             self.set_last_notification(notification)
 
-            if self.by_email:
+            if send_email & self.by_email:
                 subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
                 from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
 
@@ -157,6 +161,14 @@ class AnswerSubscription(Subscription):
                 msg.attach_alternative(message_html, "text/html")
                 msg.send()
 
+    def mark_notification_read(self):
+        subscription = self.get_existing();
+
+        if subscription is not None:
+            if subscription.last_notification is not None:
+                subscription.last_notification.is_read = True
+                subscription.last_notification.save()
+
 
 class UpdateTutorialSubscription(Subscription):
     """
@@ -168,20 +180,32 @@ class UpdateTutorialSubscription(Subscription):
             .format(self.profile, self.object_id)
 
     def get_existing(self):
-        return UpdateTutorialSubscription.objects.get(
-            object_id=self.object_id,
-            content_type__pk=self.content_type.pk,
-            profile=self.profile)
+        try:
+            existing = UpdateTutorialSubscription.objects.get(
+                object_id=self.object_id,
+                content_type__pk=self.content_type.pk,
+                profile=self.profile)
+        except UpdateTutorialSubscription.DoesNotExist:
+            existing = None
+        return existing
 
     def send_notification(self, sender=None):
-        notification = Notification(subscription=self, sender=sender)
-        notification.title = self.content_object.get_title()
-        notification.url = reverse('zds.tutorial.views.history', args=[
-            self.content_object.pk,
-            self.content_object.slug,
-        ])
-        notification.save()
-        self.set_last_notification(notification)
+        if self.last_notification is None or self.last_notification.is_read:
+            notification = Notification(subscription=self, sender=sender)
+            notification.title = self.content_object.get_title()
+            notification.url = reverse('zds.tutorial.views.history', args=[
+                self.content_object.pk,
+                self.content_object.slug,
+            ])
+            notification.save()
+            self.set_last_notification(notification)
+
+    def mark_notification_read(self):
+        subscription = self.get_existing();
+
+        if subscription is not None:
+            subscription.last_notification.is_read = True
+            subscription.last_notification.save()
 
 
 class UpdateArticleSubscription(Subscription):
@@ -194,20 +218,33 @@ class UpdateArticleSubscription(Subscription):
             .format(self.profile, self.object_id)
 
     def get_existing(self):
-        return UpdateArticleSubscription.objects.get(
-            object_id=self.object_id,
-            content_type__pk=self.content_type.pk,
-            profile=self.profile)
+        try:
+            existing = UpdateArticleSubscription.objects.get(
+                object_id=self.object_id,
+                content_type__pk=self.content_type.pk,
+                profile=self.profile)
+        except UpdateArticleSubscription.DoesNotExist:
+            existing = None
+        return existing
+
 
     def send_notification(self, sender=None):
-        notification = Notification(subscription=self, sender=sender)
-        notification.title = self.content_object.get_title()
-        notification.url = reverse('zds.article.views.history', args=[
-            self.content_object.pk,
-            self.content_object.slug,
-        ])
-        notification.save()
-        self.set_last_notification(notification)
+        if self.last_notification is None or self.last_notification.is_read:
+            notification = Notification(subscription=self, sender=sender)
+            notification.title = self.content_object.get_title()
+            notification.url = reverse('zds.article.views.history', args=[
+                self.content_object.pk,
+                self.content_object.slug,
+            ])
+            notification.save()
+            self.set_last_notification(notification)
+
+    def mark_notification_read(self):
+        subscription = self.get_existing();
+
+        if subscription is not None:
+            subscription.last_notification.is_read = True
+            subscription.last_notification.save()
 
 
 class PublicationSubscription(Subscription):
@@ -220,17 +257,30 @@ class PublicationSubscription(Subscription):
             .format(self.profile, self.content_type, self.object_id)
 
     def get_existing(self):
-        return PublicationSubscription.objects.get(
-            object_id=self.object_id,
-            content_type__pk=self.content_type.pk,
-            profile=self.profile)
+        try:
+            existing = PublicationSubscription.objects.get(
+                object_id=self.object_id,
+                content_type__pk=self.content_type.pk,
+                profile=self.profile)
+        except PublicationSubscription.DoesNotExist:
+            existing = None
+        return existing
+
 
     def send_notification(self, validation=None):
-        notification = Notification(subscription=self, content_object=validation, sender=self.content_object.author)
-        notification.url = self.content_object.get_absolute_url_online()
-        notification.title = self.content_object.get_title()
-        notification.save()
-        self.set_last_notification(notification)
+        if self.last_notification is None or self.last_notification.is_read:
+            notification = Notification(subscription=self, content_object=validation, sender=self.content_object.author)
+            notification.url = self.content_object.get_absolute_url_online()
+            notification.title = self.content_object.get_title()
+            notification.save()
+            self.set_last_notification(notification)
+
+    def mark_notification_read(self):
+        subscription = self.get_existing();
+
+        if subscription is not None:
+            subscription.last_notification.is_read = True
+            subscription.last_notification.save()
 
 
 class NewTopicSubscription(Subscription):
@@ -243,15 +293,19 @@ class NewTopicSubscription(Subscription):
             .format(self.profile, self.content_type, self.object_id)
 
     def get_existing(self):
-        return NewTopicSubscription.objects.get(
-            object_id=self.object_id,
-            content_type__pk=self.content_type.pk,
-            profile=self.profile)
+        try:
+            existing = NewTopicSubscription.objects.get(
+                object_id=self.object_id,
+                content_type__pk=self.content_type.pk,
+                profile=self.profile)
+        except NewTopicSubscription.DoesNotExist:
+            existing = None
+        return existing
 
     def send_notification(self, topic=None):
-        notification = Notification(subscription=self, content_object=topic, sender=self.topic.author)
+        notification = Notification(subscription=self, content_object=topic, sender=topic.author.profile)
         notification.url = topic.get_absolute_url()
-        notification.title = topic.get_title()
+        notification.title = topic.title
         notification.save()
         self.set_last_notification(notification)
 
