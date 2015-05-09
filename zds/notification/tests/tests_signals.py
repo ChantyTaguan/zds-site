@@ -1,10 +1,11 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from django.test import TestCase
 from zds.forum.factories import CategoryFactory, ForumFactory, TopicFactory, PostFactory
 from zds.forum.models import Topic
 from zds.member.factories import ProfileFactory
-from zds.notification.models import Subscription, Notification
+from zds.notification.models import Subscription, Notification, AnswerSubscription
 from zds.utils import slugify
 
 
@@ -42,11 +43,10 @@ class NotificationForumTest(TestCase):
         topic = Topic.objects.filter(title=u'Super sujet').first()
         content_type = ContentType.objects.get_for_model(topic)
 
-        subscription = Subscription.objects.get(object_id=topic.pk,
-                                                content_type__pk=content_type.pk,
-                                                profile=self.profile1, type='NEW_CONTENT')
-        self.assertEqual(subscription.is_active, True)
-        self.assertEqual(subscription.is_multiple, False)
+        subscription = AnswerSubscription.objects.get(object_id=topic.pk,
+                                                      content_type__pk=content_type.pk,
+                                                      profile=self.profile1)
+        self.assertEqual(subscription.active, True)
 
     def test_answer_topic(self):
         topic1 = TopicFactory(forum=self.forum11, author=self.profile2.user)
@@ -71,11 +71,10 @@ class NotificationForumTest(TestCase):
         self.assertEqual(notification.subscription.object_id, topic1.pk)
 
         # check that answerer has subscribed to the topic
-        subscription = Subscription.objects.get(object_id=topic1.pk,
+        subscription = AnswerSubscription.objects.get(object_id=topic1.pk,
                                                 content_type__pk=subscription_content_type.pk,
-                                                profile=self.profile1, type='NEW_CONTENT')
-        self.assertEqual(subscription.is_active, True)
-        self.assertEqual(subscription.is_multiple, False)
+                                                profile=self.profile1)
+        self.assertEqual(subscription.active, True)
 
     def test_topic_read(self):
 
@@ -131,13 +130,13 @@ class NotificationForumTest(TestCase):
         notification.save()
 
         result = self.client.get(
-            reverse('zds.forum.views.unread_post') +
-            '?message={}'.format(post1.pk),
-            follow=False)
+                reverse('zds.forum.views.unread_post') +
+                '?message={}'.format(post1.pk),
+                follow=False)
 
         self.assertEqual(result.status_code, 302)
 
-        notification = Notification.objects.get(subscription__profile=self.profile2, is_read=False)
+        notification = Notification.objects.get(subscription__profile=self.profile1, is_read=False)
         self.assertEqual(notification.object_id, post1.pk)
         self.assertEqual(notification.subscription.object_id, topic1.pk)
 
