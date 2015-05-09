@@ -861,7 +861,7 @@ def unread_post(request):
         else:
             t.delete()
 
-    signals.answer_unread.send(sender=None, instance=post, user=request.user)
+    signals.answer_unread.send(sender=None, instance=post, user=request.user, answer_to=post.topic)
 
     return redirect(reverse("zds.forum.views.details", args=[post.topic.forum.category.slug, post.topic.forum.slug]))
 
