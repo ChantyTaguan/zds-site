@@ -131,18 +131,20 @@ class AnswerSubscription(Subscription):
         return existing
 
     def send_notification(self, answer=None, send_email=True):
-        if self.last_notification is None or self.last_notification.is_read:
-            notification = Notification(subscription=self, content_object=answer, sender=answer.author.profile)
+        subscription = self.get_existing();
+        if subscription.last_notification is None or subscription.last_notification.is_read:
+            notification = Notification(subscription=subscription, content_object=answer, sender=answer.author.profile)
             notification.url = answer.get_absolute_url()
-            notification.title = self.content_object.title
+            notification.title = subscription.content_object.title
             notification.save()
-            self.set_last_notification(notification)
+            subscription.set_last_notification(notification)
+            subscription.save()
 
-            if send_email & self.by_email:
+            if send_email & subscription.by_email:
                 subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
                 from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
 
-                receiver = self.profile.user
+                receiver = subscription.profile.user
                 context = {
                             'username': receiver.username,
                             'title': notification.get_title(),
@@ -152,14 +154,18 @@ class AnswerSubscription(Subscription):
                 }
                 message_html = render_to_string(
                             'email/notification/answer_subscription/'
-                            + self.content_type.model + '.html', context)
+                            + subscription.content_type.model + '.html', context)
                 message_txt = render_to_string(
                             'email/notification/answer_subscription/'
-                            + self.content_type.model + '.txt', context)
+                            + subscription.content_type.model + '.txt', context)
 
                 msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
                 msg.attach_alternative(message_html, "text/html")
                 msg.send()
+        elif subscription.last_notification is not None:
+            if not subscription.last_notification.is_read and subscription.last_notification.pubdate > answer.pubdate:
+                subscription.last_notification.content_object = answer
+                subscription.last_notification.save()
 
     def mark_notification_read(self):
         subscription = self.get_existing();
