@@ -732,10 +732,13 @@ def modify(request):
                     True,
                     direct=False)
 
-
                 for author in article.authors.all():
-                    subscription = AnswerSubscription(profile=author.profile, content_object=article)
-                    subscription.activate_or_save()
+                    subscription = AnswerSubscription.get_existing(author.profile, article)
+                    if subscription is None:
+                        subscription = AnswerSubscription(profile=author.profile, content_object=article)
+                        subscription.save()
+                    else:
+                        subscription.activate()
 
                 return redirect(
                     article.get_absolute_url() +
@@ -904,12 +907,17 @@ def modify(request):
 
     if 'follow' in request.POST:
         resp = {}
-        subscription = AnswerSubscription(profile=request.user.profile, content_object=article)
+        subscription = AnswerSubscription.get_existing(article.author.profile, article)
         if data["follow"] == "1":
-            subscription.activate_or_save()
+            if subscription is None:
+                subscription = AnswerSubscription(profile=article.author.profile, content_object=article)
+                subscription.save()
+            else:
+                subscription.activate()
             resp["follow"] = -1
         else:
-            subscription.deactivate()
+            if subscription is not None:
+                subscription.deactivate()
             resp["follow"] = 1
         if request.is_ajax():
             return HttpResponse(json_writter.dumps(resp), content_type='application/json')

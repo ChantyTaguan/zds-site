@@ -16,20 +16,30 @@ from zds.utils.models import Alert, CommentLike, CommentDislike
 class TopicEditMixin(object):
     @staticmethod
     def perform_follow(active, topic, user):
-        subscription = AnswerSubscription(profile=user.profile, content_object=topic)
+        subscription = AnswerSubscription.get_existing(user.profile, topic)
         if active:
-            subscription.activate_or_save()
+            if subscription is not None:
+                subscription.activate()
+            else:
+                subscription = AnswerSubscription(profile=user.profile, content_object=topic)
+                subscription.save()
             return -1
-        subscription.deactivate()
+        if subscription is not None:
+            subscription.deactivate()
         return 1
 
     @staticmethod
     def perform_follow_by_email(active, topic, user):
-        subscription = AnswerSubscription(profile=user.profile, content_object=topic)
+        subscription = AnswerSubscription.get_existing(user.profile, topic)
         if active:
-            subscription.activate_or_save(by_email=True)
+            if subscription is not None:
+                subscription.activate(by_email=True)
+            else:
+                subscription = AnswerSubscription(profile=user.profile, content_object=topic, by_email=True)
+                subscription.save()
             return -1
-        subscription.activate_or_save(by_email=False)
+        if subscription is not None:
+            subscription.deactivate_email()
         return 1
 
     @staticmethod
