@@ -25,8 +25,7 @@ from models import Category, Forum, Topic, Post, never_read, \
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import activate_subscription, \
-    deactivate_subscription, get_subscribers, deactivate_email_subscription
+from zds.notification.models import AnswerSubscription, NewTopicSubscription
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -399,10 +398,12 @@ def move_topic(request):
 
     # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
     # This avoids unreachable notifications.
-    followers = get_subscribers(topic)
+    subscription = AnswerSubscription(profile=None, content_object=topic)
+    followers = subscription.get_subscribers()
     for follower in followers:
         if not forum.can_read(follower):
-            deactivate_subscription(topic, follower)
+            subscription = AnswerSubscription(profile=follower.profile, content_object=topic)
+            subscription.deactivate()
     messages.success(request,
                      u"Le sujet {0} a bien été déplacé dans {1}."
                      .format(topic.title,
@@ -435,19 +436,20 @@ def edit(request):
     data = request.POST
     resp = {}
     g_topic = get_object_or_404(Topic, pk=topic_pk)
+    subscription = AnswerSubscription(profile=request.user.profile, content_object=g_topic)
     if "follow" in data:
         if data["follow"] == "1":
-            activate_subscription(g_topic, request.user, is_multiple=False)
+            subscription.activate_or_save()
             resp["follow"] = -1
         else:
-            deactivate_subscription(g_topic, request.user)
+            subscription.deactivate()
             resp["follow"] = 1
     if "email" in data:
         if data["email"] == "1":
-            activate_subscription(g_topic, request.user, by_email=True, is_multiple=False)
+            subscription.activate_or_save(by_email=True)
             resp["email"] = -1
         else:
-            deactivate_email_subscription(g_topic, request.user)
+            subscription.activate_or_save(by_email=False)
             resp["follow"] = 1
     if request.user == g_topic.author \
             or request.user.has_perm("forum.change_topic"):
@@ -1181,11 +1183,12 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
+        subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
         if data["follow"] == "1":
-            activate_subscription(content, request.user, is_multiple=True)
+            subscription.activate_or_save()
             resp["follow"] = -1
         else:
-            deactivate_subscription(content, request.user)
+            subscription.deactivate()
             resp["follow"] = 1
 
     if request.is_ajax():

@@ -10,7 +10,7 @@ from django.db.models import F
 from zds.article.models import Reaction, ArticleRead
 from zds.forum.models import never_read as never_read_topic, Post, TopicRead, Topic
 from zds.mp.models import PrivateTopic
-from zds.notification.models import Notification, has_subscribed, Subscription
+from zds.notification.models import Notification, Subscription, AnswerSubscription, UpdateTutorialSubscription
 from zds.tutorial.models import Note, TutorialRead
 from zds.utils import get_current_user
 from zds.utils.models import Alert
@@ -37,7 +37,7 @@ def humane_delta(value):
 
 @register.filter('followed_topics')
 def followed_topics(user):
-    topics_followed = Subscription.objects.filter(profile=user.profile, content_type__model='topic', is_active=True)\
+    topics_followed = AnswerSubscription.objects.filter(profile=user.profile, content_type__model='topic', active=True)\
         .order_by('-last_notification__pubdate')[:10]
     # This period is a map for link a moment (Today, yesterday, this week, this month, etc.) with
     # the number of days for which we can say we're still in the period
@@ -73,39 +73,38 @@ def comp(d1, d2):
 def notifications(user):
     unread_notifications = Notification.objects.filter(subscription__profile=user.profile, is_read=False)\
         .order_by('-pubdate')
-    for notif in unread_notifications:
-        notif.url = notif.get_url()
-        notif.title = notif.get_title()
-        notif.author = notif.get_author()
     return unread_notifications
 
 @register.filter('notif_title')
 def notif_title(notification):
-    return notification.get_title()
+    return notification.title
 
 @register.filter('notif_author_profile')
 def notif_author_profile(notification):
-    return notification.get_author().profile
+    return notification.sender
 
 @register.filter('notif_username')
 def notif_username(notification):
-    return notification.get_author().username
+    return notification.sender.user.username
 
 @register.filter('notif_url')
 def notif_url(notification):
-    return notification.get_url()
+    return notification.url
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    return has_subscribed(content_subscription, get_current_user())
+    subscription = AnswerSubscription(profile=get_current_user().profile, content_object=content_subscription)
+    return subscription.is_active()
 
 @register.filter('has_suscribed_email_new')
 def has_suscribed_email_new(content_subscription):
-    return has_subscribed(content_subscription, get_current_user(), by_email=True)
+    subscription = AnswerSubscription(profile=get_current_user().profile, content_object=content_subscription)
+    return subscription.is_by_email()
 
-@register.filter('has_subscribed_update')
+@register.filter('has_subscribed_update_tutorial')
 def has_subscribed_update(content_subscription):
-    return has_subscribed(content_subscription, get_current_user(), type_subscription='UPDATE')
+    subscription = UpdateTutorialSubscription(profile=get_current_user().profile, content_object=content_subscription)
+    return subscription.is_active()
 
 @register.filter('from_topic')
 def from_topic(notification):
