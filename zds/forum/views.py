@@ -691,12 +691,17 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
-        subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
+        subscription = NewTopicSubscription.get_existing(request.user.profile, content)
         if data["follow"] == "1":
-            subscription.activate_or_save()
+            if subscription is not None:
+                subscription.activate()
+            else:
+                subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
+                subscription.save()
             resp["follow"] = -1
         else:
-            subscription.deactivate()
+            if subscription is not None:
+                subscription.deactivate()
             resp["follow"] = 1
 
     if request.is_ajax():
