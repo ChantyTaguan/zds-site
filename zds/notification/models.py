@@ -36,35 +36,75 @@ class Subscription(models.Model):
         return _(u'<Abonnement du membre "{0}" aux notifications pour le {1}, #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
 
-    def activate(self, by_email=False):
+    def activate_or_save(self, by_email=None):
         """
-        Activates the subscription if it's inactive
+        Save the subscription if it does not exists yet.
+        If it does exists, activates it, (modifying by_email if it is given)
         """
-        changed = False
-        if not self.active:
-            self.active = True
-            changed = True
-        if by_email and not self.by_email:
-            self.by_email = by_email
-            changed = True
-        if changed:
+        try:
+            existing = self.get_existing()
+
+        except Subscription.DoesNotExist:
+            existing = None
+
+        if existing is None:
+            if by_email is not None:
+                self.by_email = by_email
             self.save()
+        else:
+            existing.active = True
+            if by_email is not None:
+                existing.by_email = by_email
+            existing.save()
 
     def deactivate(self):
         """
-        Deactivate the subscription if it is active. Does nothing otherwise
+        Deactivate the corresponding subscription if it exists. Does nothing otherwise
         """
-        if self.active:
-            self.active = False
-            self.save()
+        try:
+            existing = self.get_existing()
+        except Subscription.DoesNotExist:
+            existing = None
 
-    def deactivate_email(self):
-        """
-        Deactivate the email if it is active. Does nothing otherwise
-        """
-        if self.active and self.by_email:
-            self.by_email = False
-            self.save()
+        if existing is not None:
+            existing.active = False
+            existing.save()
+
+    def is_active(self):
+        try:
+            existing = self.get_existing()
+        except Subscription.DoesNotExist:
+            return False
+
+        return existing.active
+
+    def is_by_email(self):
+        try:
+            existing = self.get_existing()
+        except Subscription.DoesNotExist:
+            return False
+
+        return existing.active and existing.by_email
+
+    def get_subscribers(self, only_by_email=False):
+        users = []
+
+        if only_by_email:
+            # if I'm only interested by the email subscription
+            p = Profile.objects.filter(Q(subscription__instance_of=self.__class__)
+                                       & Q(subscription__object_id=self.object_id)
+                                       & Q(subscription__content_type__pk=self.content_type.pk)
+                                       & Q(subscription__active=True)
+                                       & Q(subscription__by_email=True)).distinct().all()
+        else:
+            p = Profile.objects.filter(Q(subscription__instance_of=self.__class__)
+                                       & Q(subscription__object_id=self.object_id)
+                                       & Q(subscription__content_type__pk=self.content_type.pk)
+                                       & Q(subscription__active=True)).distinct().all()
+
+        for profile in p:
+            users.append(profile.user)
+        return users
 
     def set_last_notification(self, notification):
         self.last_notification = notification
@@ -80,85 +120,42 @@ class AnswerSubscription(Subscription):
         return _(u'<Abonnement du membre "{0}" aux réponses au {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
 
-    @staticmethod
-    def get_existing(profile, content_object, active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if active:
-                existing = AnswerSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, active=True)
-            else:
-                existing = AnswerSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except AnswerSubscription.DoesNotExist:
-            existing = None
-        return existing
+    def get_existing(self):
+        return AnswerSubscription.objects.get(
+            object_id=self.object_id,
+            content_type__pk=self.content_type.pk,
+            profile=self.profile)
 
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
+    def send_notification(self, answer=None):
+        if self.last_notification is None or self.last_notification.is_read:
+            notification = Notification(subscription=self, content_object=answer, sender=answer.author.profile)
+            notification.url = answer.get_absolute_url()
+            notification.title = self.content_object.title
+            notification.save()
+            self.set_last_notification(notification)
 
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = AnswerSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = AnswerSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
+            if self.by_email:
+                subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
+                from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
 
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
+                receiver = self.profile.user
+                context = {
+                            'username': receiver.username,
+                            'title': notification.get_title(),
+                            'url': settings.ZDS_APP['site']['url'] + notification.get_url(),
+                            'author': notification.get_author().user.username,
+                            'site_name': settings.ZDS_APP['site']['litteral_name']
+                }
+                message_html = render_to_string(
+                            'email/notification/answer_subscription/'
+                            + self.content_type.model + '.html', context)
+                message_txt = render_to_string(
+                            'email/notification/answer_subscription/'
+                            + self.content_type.model + '.txt', context)
 
-    def send_notification(self, answer=None, send_email=True):
-        if self.active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, content_object=answer, sender=answer.author.profile)
-                notification.url = answer.get_absolute_url()
-                notification.title = self.content_object.title
-                notification.save()
-                self.set_last_notification(notification)
-                self.save()
-
-                if send_email & self.by_email:
-                    subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
-                    from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
-
-                    receiver = self.profile.user
-                    context = {
-                                'username': receiver.username,
-                                'title': notification.get_title(),
-                                'url': settings.ZDS_APP['site']['url'] + notification.get_url(),
-                                'author': notification.get_author().user.username,
-                                'site_name': settings.ZDS_APP['site']['litteral_name']
-                    }
-                    message_html = render_to_string(
-                                'email/notification/answer_subscription/'
-                                + self.content_type.model + '.html', context)
-                    message_txt = render_to_string(
-                                'email/notification/answer_subscription/'
-                                + self.content_type.model + '.txt', context)
-
-                    msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
-                    msg.attach_alternative(message_html, "text/html")
-                    msg.send()
-            elif self.last_notification is not None:
-                if not self.last_notification.is_read and self.last_notification.pubdate > answer.pubdate:
-                    self.last_notification.content_object = answer
-                    self.last_notification.save()
-
-    def mark_notification_read(self):
-        if self.last_notification is not None:
-            self.last_notification.is_read = True
-            self.last_notification.save()
+                msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
+                msg.attach_alternative(message_html, "text/html")
+                msg.send()
 
 
 class UpdateTutorialSubscription(Subscription):
@@ -170,60 +167,21 @@ class UpdateTutorialSubscription(Subscription):
         return _(u'<Abonnement du membre "{0}" aux mises à jour du tutorial #{1}>')\
             .format(self.profile, self.object_id)
 
-    @staticmethod
-    def get_existing(profile, content_object, active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if active:
-                existing = UpdateTutorialSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, active=True)
-            else:
-                existing = UpdateTutorialSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except UpdateTutorialSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = UpdateTutorialSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = UpdateTutorialSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
+    def get_existing(self):
+        return UpdateTutorialSubscription.objects.get(
+            object_id=self.object_id,
+            content_type__pk=self.content_type.pk,
+            profile=self.profile)
 
     def send_notification(self, sender=None):
-        if self.active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, sender=sender)
-                notification.title = self.content_object.get_title()
-                notification.url = reverse('zds.tutorial.views.history', args=[
-                    self.content_object.pk,
-                    self.content_object.slug,
-                ])
-                notification.save()
-                self.set_last_notification(notification)
-
-    def mark_notification_read(self):
-        if self.last_notification is not None:
-            self.last_notification.is_read = True
-            self.last_notification.save()
+        notification = Notification(subscription=self, sender=sender)
+        notification.title = self.content_object.get_title()
+        notification.url = reverse('zds.tutorial.views.history', args=[
+            self.content_object.pk,
+            self.content_object.slug,
+        ])
+        notification.save()
+        self.set_last_notification(notification)
 
 
 class UpdateArticleSubscription(Subscription):
@@ -235,60 +193,21 @@ class UpdateArticleSubscription(Subscription):
         return _(u'<Abonnement du membre "{0}" aux mises à jour de l\'article #{1}>')\
             .format(self.profile, self.object_id)
 
-    @staticmethod
-    def get_existing(profile, content_object, active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if active:
-                existing = UpdateArticleSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, active=True)
-            else:
-                existing = UpdateArticleSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except UpdateArticleSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = UpdateArticleSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = UpdateArticleSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
+    def get_existing(self):
+        return UpdateArticleSubscription.objects.get(
+            object_id=self.object_id,
+            content_type__pk=self.content_type.pk,
+            profile=self.profile)
 
     def send_notification(self, sender=None):
-        if self.active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, sender=sender)
-                notification.title = self.content_object.get_title()
-                notification.url = reverse('zds.article.views.history', args=[
-                    self.content_object.pk,
-                    self.content_object.slug,
-                ])
-                notification.save()
-                self.set_last_notification(notification)
-
-    def mark_notification_read(self):
-        if self.last_notification is not None:
-            self.last_notification.is_read = True
-            self.last_notification.save()
+        notification = Notification(subscription=self, sender=sender)
+        notification.title = self.content_object.get_title()
+        notification.url = reverse('zds.article.views.history', args=[
+            self.content_object.pk,
+            self.content_object.slug,
+        ])
+        notification.save()
+        self.set_last_notification(notification)
 
 
 class PublicationSubscription(Subscription):
@@ -300,56 +219,18 @@ class PublicationSubscription(Subscription):
         return _(u'<Abonnement du membre "{0}" aux publications du {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
 
-    @staticmethod
-    def get_existing(profile, content_object, active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if active:
-                existing = PublicationSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, active=True)
-            else:
-                existing = PublicationSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except PublicationSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = PublicationSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = PublicationSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
+    def get_existing(self):
+        return PublicationSubscription.objects.get(
+            object_id=self.object_id,
+            content_type__pk=self.content_type.pk,
+            profile=self.profile)
 
     def send_notification(self, validation=None):
-        if self.active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, content_object=validation, sender=self.content_object.author)
-                notification.url = self.content_object.get_absolute_url_online()
-                notification.title = self.content_object.get_title()
-                notification.save()
-                self.set_last_notification(notification)
-
-    def mark_notification_read(self):
-        self.last_notification.is_read = True
-        self.last_notification.save()
+        notification = Notification(subscription=self, content_object=validation, sender=self.content_object.author)
+        notification.url = self.content_object.get_absolute_url_online()
+        notification.title = self.content_object.get_title()
+        notification.save()
+        self.set_last_notification(notification)
 
 
 class NewTopicSubscription(Subscription):
@@ -361,51 +242,18 @@ class NewTopicSubscription(Subscription):
         return _(u'<Abonnement du membre "{0}" aux nouveaux sujets du {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
 
-    @staticmethod
-    def get_existing(profile, content_object, active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if active:
-                existing = NewTopicSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, active=True)
-            else:
-                existing = NewTopicSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except NewTopicSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = NewTopicSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = NewTopicSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
+    def get_existing(self):
+        return NewTopicSubscription.objects.get(
+            object_id=self.object_id,
+            content_type__pk=self.content_type.pk,
+            profile=self.profile)
 
     def send_notification(self, topic=None):
-        if self.active:
-            notification = Notification(subscription=self, content_object=topic, sender=topic.author.profile)
-            notification.url = topic.get_absolute_url()
-            notification.title = topic.title
-            notification.save()
-            self.set_last_notification(notification)
+        notification = Notification(subscription=self, content_object=topic, sender=self.topic.author)
+        notification.url = topic.get_absolute_url()
+        notification.title = topic.get_title()
+        notification.save()
+        self.set_last_notification(notification)
 
 
 class PingSubscription(AnswerSubscription):
@@ -416,6 +264,12 @@ class PingSubscription(AnswerSubscription):
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux mentions>')\
             .format(self.profile, self.object_id)
+
+    def get_existing(self):
+        return PingSubscription.objects.get(
+            object_id=self.object_id,
+            content_type__pk=self.content_type.pk,
+            profile=self.profile)
 
 
 class Notification(models.Model):

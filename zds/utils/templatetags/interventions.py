@@ -93,21 +93,18 @@ def notif_url(notification):
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    subscription = AnswerSubscription.get_existing(get_current_user().profile, content_subscription, active=True)
-    return subscription is not None
+    subscription = AnswerSubscription(profile=get_current_user().profile, content_object=content_subscription)
+    return subscription.is_active()
 
 @register.filter('has_suscribed_email_new')
 def has_suscribed_email_new(content_subscription):
-    subscription = AnswerSubscription(get_current_user().profile, content_subscription, active=True)
-    if subscription is not None:
-        return subscription.by_email
-    else:
-        return False
+    subscription = AnswerSubscription(profile=get_current_user().profile, content_object=content_subscription)
+    return subscription.is_by_email()
 
 @register.filter('has_subscribed_update_tutorial')
 def has_subscribed_update(content_subscription):
-    subscription = UpdateTutorialSubscription.get_existing(get_current_user().profile, content_subscription, active=True)
-    return subscription is not None
+    subscription = UpdateTutorialSubscription(profile=get_current_user().profile, content_object=content_subscription)
+    return subscription.is_active()
 
 @register.filter('from_topic')
 def from_topic(notification):

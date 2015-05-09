@@ -130,13 +130,13 @@ class NotificationForumTest(TestCase):
         notification.save()
 
         result = self.client.get(
-                reverse('zds.forum.views.unread_post') +
-                '?message={}'.format(post1.pk),
-                follow=False)
+            reverse('zds.forum.views.unread_post') +
+            '?message={}'.format(post1.pk),
+            follow=False)
 
         self.assertEqual(result.status_code, 302)
 
-        notification = Notification.objects.get(subscription__profile=self.profile1, is_read=False)
+        notification = Notification.objects.get(subscription__profile=self.profile2, is_read=False)
         self.assertEqual(notification.object_id, post1.pk)
         self.assertEqual(notification.subscription.object_id, topic1.pk)
 
