@@ -31,3 +31,48 @@
 
     {% include "misc/pagination.part.html" with position="bottom" %}
 {% endblock %}
+
+{% block sidebar_blocks %}
+    <div class="mobile-menu-bloc mobile-all-links" data-title="{% trans 'Filtres' %}">
+        <h3>{% trans 'Filtres' %}</h3>
+        <ul>
+            <li>
+                <a href="{% url "notification-list" %}?type=topic{% if sort %}&sort={{ sort }}{% endif %}{% if order %}&order={{ order }}{% endif %}" class="ico-after tick green {% if request.GET.type == "topic" %}selected{% endif %}">
+                    {% trans "Sujets" %}
+                </a>
+            </li>
+            {% if request.GET.type and not request.GET.type == 'all' %}
+                <li>
+                    <a href="{% url "notification-list" %}{% if sort %}?sort={{ sort }}{% endif %}{% if order %}&order={{ order }}{% endif %}" class="ico-after cross">
+                        {% trans "Annuler le filtre" %}
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+    <div class="mobile-menu-bloc mobile-all-links" data-title="{% trans 'Trier' %}">
+        <h3>{% trans 'Trier' %}</h3>
+        <ul>
+            <li>
+                <a href="{% url "notification-list" %}?sort=creation{% if type %}&type={{ type }}{% endif %}{% if order %}&order={{ order }}{% endif %}" class="ico-after gear {% if sort == "creation" %}selected{% endif %}">
+                    {%  trans 'Par date de création' %}
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="mobile-menu-bloc mobile-all-links" data-title="{% trans 'Ordre' %}">
+        <h3>{% trans 'Ordre' %}</h3>
+        <ul>
+            <li>
+                <a href="{% url "notification-list" %}?order=asc{% if type %}&type={{ type }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="ico-after move {% if order == "asc" %}selected{% endif %}">
+                    {%  trans 'Ascendant' %}
+                </a>
+            </li>
+            <li>
+                <a href="{% url "notification-list" %}?order=desc{% if type %}&type={{ type }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="ico-after move {% if order == "desc" %}selected{% endif %}">
+                    {%  trans 'Descendant' %}
+                </a>
+            </li>
+        </ul>
+    </div>
+{% endblock %}
