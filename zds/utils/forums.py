@@ -3,7 +3,6 @@
 from datetime import datetime
 from zds.forum.models import Topic, Post
 from zds.forum.views import get_tag_by_title
-from zds.notification.models import activate_subscription
 from zds.utils.templatetags.emarkdown import emarkdown
 
 

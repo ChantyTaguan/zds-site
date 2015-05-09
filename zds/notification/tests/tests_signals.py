@@ -113,3 +113,34 @@ class NotificationForumTest(TestCase):
 
         notification = Notification.objects.get(subscription__profile=self.profile2)
         self.assertEqual(notification.is_read, True)
+
+    def test_post_unread(self):
+        topic1 = TopicFactory(forum=self.forum11, author=self.profile2.user)
+        post1 = PostFactory(topic=topic1, author=self.profile2.user, position=1)
+        post2 = PostFactory(topic=topic1, author=self.profile1.user, position=2)
+        post3 = PostFactory(topic=topic1, author=self.profile2.user, position=3)
+
+        self.client.logout()
+        log = self.client.login(
+            username=self.profile1.user.username,
+            password='hostel77')
+        self.assertEqual(log, True)
+        notification = Notification.objects.get(subscription__profile=self.profile2)
+        self.assertEqual(notification.is_read, False)
+        notification.is_read = True
+        notification.save()
+
+        result = self.client.get(
+            reverse('zds.forum.views.unread_post') +
+            '?message={}'.format(post1.pk),
+            follow=False)
+
+        self.assertEqual(result.status_code, 302)
+
+        notification = Notification.objects.get(subscription__profile=self.profile2, is_read=False)
+        self.assertEqual(notification.object_id, post1.pk)
+        self.assertEqual(notification.subscription.object_id, topic1.pk)
+
+
+
+
