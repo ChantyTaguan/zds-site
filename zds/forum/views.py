@@ -398,11 +398,10 @@ def move_topic(request):
 
     # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
     # This avoids unreachable notifications.
-    subscription = AnswerSubscription(profile=None, content_object=topic)
-    followers = subscription.get_subscribers()
+    followers = AnswerSubscription.get_subscribers(topic)
     for follower in followers:
         if not forum.can_read(follower):
-            subscription = AnswerSubscription(profile=follower.profile, content_object=topic)
+            subscription = AnswerSubscription.get_existing(follower.profile, topic, is_active=True)
             subscription.deactivate()
     messages.success(request,
                      u"Le sujet {0} a bien été déplacé dans {1}."

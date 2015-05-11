@@ -29,7 +29,7 @@ def unread_answer_event(sender, **kwargs):
     answer = kwargs.get('instance')
     user = kwargs.get('user')
     answer_to = kwargs.get('answer_to')
-    subscription = AnswerSubscription.get_existing(user.profile, answer_to, active=True)
+    subscription = AnswerSubscription.get_existing(user.profile, answer_to, is_active=True)
     if subscription is not None:
         subscription.send_notification(answer=answer, send_email=False)
 
@@ -38,11 +38,11 @@ def unread_answer_event(sender, **kwargs):
 def mark_publication_notifications_read(sender, **kwargs):
     publication = kwargs.get('instance')
     user = kwargs.get('user')
-    subscription = PublicationSubscription.get_existing(user, publication)
+    subscription = PublicationSubscription.get_existing(user, publication, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read()
 
-    answer_subscription = AnswerSubscription.get_existing(user, publication)
+    answer_subscription = AnswerSubscription.get_existing(user, publication, is_active=True)
     if subscription is not None:
         answer_subscription.mark_notification_read()
 
@@ -51,17 +51,22 @@ def mark_publication_notifications_read(sender, **kwargs):
 def mark_topic_notifications_read(sender, **kwargs):
     topic = kwargs.get('instance')
     user = kwargs.get('user')
-    subscription = AnswerSubscription.get_existing(user.profile, topic)
+
+    # Subscription to the topic
+    subscription = AnswerSubscription.get_existing(user.profile, topic, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read()
 
-    content_notification_type = ContentType.objects.get(model="topic")
-    notifications = Notification.objects.filter(subscription__profile=user.profile,
-                                                content_type__pk=content_notification_type.pk,
-                                                object_id=topic.pk, is_read=False)
-    for notification in notifications:
-        notification.is_read = True
-        notification.save()
+    # Subscription to the forum
+    subscription = NewTopicSubscription.get_existing(user.profile, topic.forum, is_active=True)
+    if subscription is not None:
+        subscription.mark_notification_read(topic=topic)
+
+    # Subscription to the tags
+    for tag in topic.tags.all():
+        subscription = NewTopicSubscription.get_existing(user.profile, tag, is_active=True)
+        if subscription is not None:
+            subscription.mark_notification_read(topic=topic)
 
 
 # Forums
@@ -75,7 +80,7 @@ def saved_topic_event(sender, **kwargs):
         content_subscription_type = ContentType.objects.get(model="forum")
         subscription_list = NewTopicSubscription.objects\
             .filter(content_type__pk=content_subscription_type.pk,
-                    object_id=topic.forum.pk, active=True)
+                    object_id=topic.forum.pk, is_active=True)
         for subscription in subscription_list:
             if subscription.profile != topic.author.profile:
                 subscription.send_notification(topic=topic)
@@ -85,7 +90,7 @@ def saved_topic_event(sender, **kwargs):
         for tag in topic.tags.all():
             subscription_list = NewTopicSubscription.objects\
                 .filter(content_type__pk=content_subscription_type.pk,
-                        object_id=topic.forum.pk, active=True)
+                        object_id=topic.forum.pk, is_active=True)
             for subscription in subscription_list:
                 if subscription.profile != topic.author.profile:
                     subscription.send_notification(topic=topic)
@@ -108,7 +113,7 @@ def answer_topic_event(sender, **kwargs):
         content_subscription_type = ContentType.objects.get(model="topic")
         subscription_list = AnswerSubscription.objects\
             .filter(content_type__pk=content_subscription_type.pk,
-                    object_id=post.topic.pk, active=True)
+                    object_id=post.topic.pk, is_active=True)
         for subscription in subscription_list:
             if subscription.profile != post.author.profile:
                 subscription.send_notification(answer=post)
@@ -132,7 +137,7 @@ def new_reaction_event(sender, **kwargs):
         content_subscription_type = ContentType.objects.get(model="article")
         subscription_list = AnswerSubscription.objects\
             .filter(content_type__pk=content_subscription_type.pk,
-                    object_id=reaction.article.pk, active=True)
+                    object_id=reaction.article.pk, is_active=True)
         for subscription in subscription_list:
             if subscription.profile != reaction.author.profile:
                 subscription.send_notification(answer=reaction)
