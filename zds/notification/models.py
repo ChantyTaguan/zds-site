@@ -25,7 +25,7 @@ class Subscription(models.Model):
 
     profile = models.ForeignKey(Profile, related_name='subscriptor', db_index=True)
     pubdate = models.DateTimeField(_(u'Date de création'), auto_now_add=True, db_index=True)
-    active = models.BooleanField(_(u'Actif'), default=True, db_index=True)
+    is_active = models.BooleanField(_(u'Actif'), default=True, db_index=True)
     by_email = models.BooleanField(_(u'Recevoir un email'), default=False)
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
@@ -41,8 +41,8 @@ class Subscription(models.Model):
         Activates the subscription if it's inactive
         """
         changed = False
-        if not self.active:
-            self.active = True
+        if not self.is_active:
+            self.is_active = True
             changed = True
         if by_email and not self.by_email:
             self.by_email = by_email
@@ -54,15 +54,15 @@ class Subscription(models.Model):
         """
         Deactivate the subscription if it is active. Does nothing otherwise
         """
-        if self.active:
-            self.active = False
+        if self.is_active:
+            self.is_active = False
             self.save()
 
     def deactivate_email(self):
         """
         Deactivate the email if it is active. Does nothing otherwise
         """
-        if self.active and self.by_email:
+        if self.is_active and self.by_email:
             self.by_email = False
             self.save()
 
@@ -81,14 +81,14 @@ class AnswerSubscription(Subscription):
             .format(self.profile, self.content_type, self.object_id)
 
     @staticmethod
-    def get_existing(profile, content_object, active=False):
+    def get_existing(profile, content_object, is_active=False):
         content_type = ContentType.objects.get_for_model(content_object)
         try:
-            if active:
+            if is_active:
                 existing = AnswerSubscription.objects.get(
                     object_id=content_object.pk,
                     content_type__pk=content_type.pk,
-                    profile=profile, active=True)
+                    profile=profile, is_active=True)
             else:
                 existing = AnswerSubscription.objects.get(
                     object_id=content_object.pk,
@@ -119,7 +119,7 @@ class AnswerSubscription(Subscription):
         return users
 
     def send_notification(self, answer=None, send_email=True):
-        if self.active:
+        if self.is_active:
             if self.last_notification is None or self.last_notification.is_read:
                 notification = Notification(subscription=self, content_object=answer, sender=answer.author.profile)
                 notification.url = answer.get_absolute_url()
@@ -171,14 +171,14 @@ class UpdateTutorialSubscription(Subscription):
             .format(self.profile, self.object_id)
 
     @staticmethod
-    def get_existing(profile, content_object, active=False):
+    def get_existing(profile, content_object, is_active=False):
         content_type = ContentType.objects.get_for_model(content_object)
         try:
-            if active:
+            if is_active:
                 existing = UpdateTutorialSubscription.objects.get(
                     object_id=content_object.pk,
                     content_type__pk=content_type.pk,
-                    profile=profile, active=True)
+                    profile=profile, is_active=True)
             else:
                 existing = UpdateTutorialSubscription.objects.get(
                     object_id=content_object.pk,
@@ -209,7 +209,7 @@ class UpdateTutorialSubscription(Subscription):
         return users
 
     def send_notification(self, sender=None):
-        if self.active:
+        if self.is_active:
             if self.last_notification is None or self.last_notification.is_read:
                 notification = Notification(subscription=self, sender=sender)
                 notification.title = self.content_object.get_title()
@@ -236,14 +236,14 @@ class UpdateArticleSubscription(Subscription):
             .format(self.profile, self.object_id)
 
     @staticmethod
-    def get_existing(profile, content_object, active=False):
+    def get_existing(profile, content_object, is_active=False):
         content_type = ContentType.objects.get_for_model(content_object)
         try:
-            if active:
+            if is_active:
                 existing = UpdateArticleSubscription.objects.get(
                     object_id=content_object.pk,
                     content_type__pk=content_type.pk,
-                    profile=profile, active=True)
+                    profile=profile, is_active=True)
             else:
                 existing = UpdateArticleSubscription.objects.get(
                     object_id=content_object.pk,
@@ -274,7 +274,7 @@ class UpdateArticleSubscription(Subscription):
         return users
 
     def send_notification(self, sender=None):
-        if self.active:
+        if self.is_active:
             if self.last_notification is None or self.last_notification.is_read:
                 notification = Notification(subscription=self, sender=sender)
                 notification.title = self.content_object.get_title()
@@ -301,14 +301,14 @@ class PublicationSubscription(Subscription):
             .format(self.profile, self.content_type, self.object_id)
 
     @staticmethod
-    def get_existing(profile, content_object, active=False):
+    def get_existing(profile, content_object, is_active=False):
         content_type = ContentType.objects.get_for_model(content_object)
         try:
-            if active:
+            if is_active:
                 existing = PublicationSubscription.objects.get(
                     object_id=content_object.pk,
                     content_type__pk=content_type.pk,
-                    profile=profile, active=True)
+                    profile=profile, is_active=True)
             else:
                 existing = PublicationSubscription.objects.get(
                     object_id=content_object.pk,
@@ -339,7 +339,7 @@ class PublicationSubscription(Subscription):
         return users
 
     def send_notification(self, validation=None):
-        if self.active:
+        if self.is_active:
             if self.last_notification is None or self.last_notification.is_read:
                 notification = Notification(subscription=self, content_object=validation, sender=self.content_object.author)
                 notification.url = self.content_object.get_absolute_url_online()
@@ -362,14 +362,14 @@ class NewTopicSubscription(Subscription):
             .format(self.profile, self.content_type, self.object_id)
 
     @staticmethod
-    def get_existing(profile, content_object, active=False):
+    def get_existing(profile, content_object, is_active=False):
         content_type = ContentType.objects.get_for_model(content_object)
         try:
-            if active:
+            if is_active:
                 existing = NewTopicSubscription.objects.get(
                     object_id=content_object.pk,
                     content_type__pk=content_type.pk,
-                    profile=profile, active=True)
+                    profile=profile, is_active=True)
             else:
                 existing = NewTopicSubscription.objects.get(
                     object_id=content_object.pk,
@@ -400,12 +400,27 @@ class NewTopicSubscription(Subscription):
         return users
 
     def send_notification(self, topic=None):
-        if self.active:
+        if self.is_active:
             notification = Notification(subscription=self, content_object=topic, sender=topic.author.profile)
             notification.url = topic.get_absolute_url()
             notification.title = topic.title
             notification.save()
             self.set_last_notification(notification)
+
+    def mark_notification_read(self, topic=None):
+        if topic is None:
+            raise Exception('topic must be defined')
+
+        content_notification_type = ContentType.objects.get(model="topic")
+        try:
+            notification = Notification.objects.get(subscription=self,
+                                                    content_type__pk=content_notification_type.pk,
+                                                    object_id=topic.pk, is_read=False)
+        except Notification.DoesNotExist:
+            notification = None
+        if notification is not None:
+            notification.is_read = True
+            notification.save()
 
 
 class PingSubscription(AnswerSubscription):

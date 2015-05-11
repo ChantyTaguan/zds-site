@@ -27,7 +27,7 @@ from django.views.generic import DetailView, UpdateView, CreateView
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
     OldTutoForm, PromoteMemberForm, KarmaForm
-from zds.notification.models import AnswerSubscription
+from zds.notification.models import AnswerSubscription, Notification, Subscription
 from zds.utils.models import Comment, CommentLike, CommentDislike
 from models import Profile, TokenForgotPassword, TokenRegister, KarmaNote
 from zds.article.models import Article
@@ -336,7 +336,7 @@ def unregister(request):
     for topic in Topic.objects.filter(author=current):
         topic.author = anonymous
         topic.save()
-    Notification.objects.filter(subscription__profile=current.profile)
+    Notification.objects.filter(subscription__profile=current.profile).delete()
     Subscription.objects.filter(profile=current.profile).delete()
     # Before deleting gallery let's summurize what we deleted
     # - unpublished tutorials with only the unregistering member as an author
@@ -923,7 +923,7 @@ def settings_promote(request, user_pk):
                         content_subscription_type = ContentType.objects.get(model="topic")
                         subscription_list = AnswerSubscription.objects\
                             .filter(profile=user.profile,
-                                    content_type__pk=content_subscription_type.pk ,active=True)
+                                    content_type__pk=content_subscription_type.pk, is_active=True)
                         for subscription in subscription_list:
                             if not subscription.content_object.forum.can_read(user):
                                 subscription.deactivate()

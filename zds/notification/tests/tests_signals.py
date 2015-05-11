@@ -46,7 +46,7 @@ class NotificationForumTest(TestCase):
         subscription = AnswerSubscription.objects.get(object_id=topic.pk,
                                                       content_type__pk=content_type.pk,
                                                       profile=self.profile1)
-        self.assertEqual(subscription.active, True)
+        self.assertEqual(subscription.is_active, True)
 
     def test_answer_topic(self):
         topic1 = TopicFactory(forum=self.forum11, author=self.profile2.user)
@@ -74,7 +74,7 @@ class NotificationForumTest(TestCase):
         subscription = AnswerSubscription.objects.get(object_id=topic1.pk,
                                                 content_type__pk=subscription_content_type.pk,
                                                 profile=self.profile1)
-        self.assertEqual(subscription.active, True)
+        self.assertEqual(subscription.is_active, True)
 
     def test_topic_read(self):
 
