@@ -25,7 +25,7 @@ from models import Category, Forum, Topic, Post, never_read, \
 from zds.forum.models import TopicRead
 from zds.member.decorator import can_write_and_read_now
 from zds.member.views import get_client_ip
-from zds.notification.models import AnswerSubscription, NewTopicSubscription
+from zds.notification.models import NewTopicSubscription, TopicAnswerSubscription
 from zds.utils import slugify
 from zds.utils.models import Alert, CommentLike, CommentDislike, Tag
 from zds.utils.mps import send_mp
@@ -398,10 +398,10 @@ def move_topic(request):
 
     # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
     # This avoids unreachable notifications.
-    followers = AnswerSubscription.objects.get_subscribers(topic)
+    followers = TopicAnswerSubscription.objects.get_subscribers(topic)
     for follower in followers:
         if not forum.can_read(follower):
-            subscription = AnswerSubscription.objects.get_existing(follower.profile, topic, is_active=True)
+            subscription = TopicAnswerSubscription.objects.get_existing(follower.profile, topic, is_active=True)
             subscription.deactivate()
     messages.success(request,
                      u"Le sujet {0} a bien été déplacé dans {1}."
@@ -435,13 +435,13 @@ def edit(request):
     data = request.POST
     resp = {}
     g_topic = get_object_or_404(Topic, pk=topic_pk)
-    subscription = AnswerSubscription.objects.get_existing(request.user.profile, g_topic)
+    subscription = TopicAnswerSubscription.objects.get_existing(request.user.profile, g_topic)
     if "follow" in data:
         if data["follow"] == "1":
             if subscription is not None:
                 subscription.activate()
             else:
-                subscription = AnswerSubscription(profile=request.user.profile, content_object=g_topic)
+                subscription = TopicAnswerSubscription(profile=request.user.profile, content_object=g_topic)
                 subscription.save()
             resp["follow"] = -1
         else:
@@ -451,9 +451,9 @@ def edit(request):
     if "email" in data:
         if data["email"] == "1":
             if subscription is not None:
-                subscription.activate(by_email=True)
+                subscription.activate_email()
             else:
-                subscription = AnswerSubscription(profile=request.user.profile, content_object=g_topic, by_email=True)
+                subscription = TopicAnswerSubscription(profile=request.user.profile, content_object=g_topic, by_email=True)
                 subscription.save()
             resp["email"] = -1
         else:

@@ -36,18 +36,21 @@ class Subscription(models.Model):
         return _(u'<Abonnement du membre "{0}" aux notifications pour le {1}, #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
 
-    def activate(self, by_email=False):
+    def activate(self):
         """
         Activates the subscription if it's inactive
         """
-        changed = False
         if not self.is_active:
             self.is_active = True
-            changed = True
-        if by_email and not self.by_email:
-            self.by_email = by_email
-            changed = True
-        if changed:
+            self.save()
+
+    def activate_email(self):
+        """
+        Acitvates the notifications by email
+        """
+        if not self.is_active or not self.by_email:
+            self.is_active = True
+            self.by_email = True
             self.save()
 
     def deactivate(self):
@@ -71,13 +74,21 @@ class Subscription(models.Model):
         self.save()
 
     def send_email(self, notification):
-        subject = self.get_email_subject(notification)
+        assert hasattr(self, "module")
+
+        subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],self.module,notification.title)
         from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
 
         receiver = self.profile.user
-        context = self.get_email_context(notification)
-        message_html = render_to_string('email/notification/' + self.model.name + '.html', context)
-        message_txt = render_to_string('email/notification/' + self.model.name + '.txt', context)
+        context = {
+            'username': self.profile.user.username,
+            'title': notification.title,
+            'url': settings.ZDS_APP['site']['url'] + notification.url,
+            'author': notification.sender.user.username,
+            'site_name': settings.ZDS_APP['site']['litteral_name']
+        }
+        message_html = render_to_string('email/notification/' + self._meta.model_name + '.html', context)
+        message_txt = render_to_string('email/notification/' + self._meta.model_name + '.txt', context)
 
         msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
         msg.attach_alternative(message_html, "text/html")
@@ -148,11 +159,10 @@ class MultipleNotificationsMixin(object):
             notification.save()
 
 
-class AnswerSubscription(Subscription, SingleNotificationMixin):
+class AnswerSubscription(Subscription):
     """
     Subscription to new answer, either in a topic, a article or a tutorial
     """
-    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux réponses au {1} #{2}>')\
@@ -162,25 +172,32 @@ class AnswerSubscription(Subscription, SingleNotificationMixin):
         return answer.get_absolute_url()
 
     def get_notification_title(self, answer):
-        return answer.topic.title
+        return self.content_object.title
 
-    def get_email_subject(self, notification):
-        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
 
-    def get_email_context(self, notification):
-        return {
-            'username': self.profile.user.username,
-            'title': notification.title,
-            'url': settings.ZDS_APP['site']['url'] + notification.url,
-            'author': notification.sender.user.username,
-            'site_name': settings.ZDS_APP['site']['litteral_name']
-        }
+
+class TopicAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
+
+    module = _(u'Forum')
+    objects = SubscriptionManager()
+
+
+class ArticleAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
+    module = _(u'Article')
+    objects = SubscriptionManager()
+
+
+class TutorialAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
+    module = _(u'Tutoriel')
+    objects = SubscriptionManager()
 
 
 class UpdateTutorialSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a tutorial
     """
+
+    module = _(u'Tutoriel')
     objects = SubscriptionManager()
 
     def __unicode__(self):
@@ -196,23 +213,13 @@ class UpdateTutorialSubscription(Subscription, SingleNotificationMixin):
     def get_notification_url(self, tutorial):
         return tutorial.title
 
-    def get_email_subject(self, notification):
-        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Tutoriel'),notification.get_title())
-
-    def get_email_context(self, notification):
-        return {
-            'username': self.profile.user.username,
-            'title': notification.title,
-            'url': settings.ZDS_APP['site']['url'] + notification.url,
-            'author': notification.sender.user.username,
-            'site_name': settings.ZDS_APP['site']['litteral_name']
-        }
-
 
 class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a article
     """
+
+    module = _(u'Article')
     objects = SubscriptionManager()
 
     def __unicode__(self):
@@ -225,27 +232,14 @@ class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
                     article.slug,
                 ])
 
-    def get_notification_url(self, article):
+    def get_notification_title(self, article):
         return article.title
 
-    def get_email_subject(self, notification):
-        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Tutoriel'),notification.get_title())
 
-    def get_email_context(self, notification):
-        return {
-            'username': self.profile.user.username,
-            'title': notification.title,
-            'url': settings.ZDS_APP['site']['url'] + notification.url,
-            'author': notification.sender.user.username,
-            'site_name': settings.ZDS_APP['site']['litteral_name']
-        }
-
-
-class PublicationSubscription(Subscription, SingleNotificationMixin):
+class PublicationSubscription(Subscription):
     """
     Subscription to the publication (public updates) of an article or tutorial
     """
-    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux publications du {1} #{2}>')\
@@ -257,23 +251,24 @@ class PublicationSubscription(Subscription, SingleNotificationMixin):
     def get_notification_url(self, publication):
         return publication.title
 
-    def get_email_subject(self, notification):
-        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Publication'),notification.get_title())
 
-    def get_email_context(self, notification):
-        return {
-            'username': self.profile.user.username,
-            'title': notification.title,
-            'url': settings.ZDS_APP['site']['url'] + notification.url,
-            'author': notification.sender.user.username,
-            'site_name': settings.ZDS_APP['site']['litteral_name']
-        }
+class ArticlePublicationSubscription(PublicationSubscription, SingleNotificationMixin):
+
+    module = _(u'Article')
+    objects = SubscriptionManager()
+
+
+class TutorialPublicationSubscription(PublicationSubscription, SingleNotificationMixin):
+
+    module = _(u'Tutoriel')
+    objects = SubscriptionManager()
 
 
 class NewTopicSubscription(Subscription, MultipleNotificationsMixin):
     """
     Subscription to new topics in a forum or with a tag
     """
+    module = _(u'Forum')
     objects = SubscriptionManager()
 
     def __unicode__(self):
@@ -283,26 +278,16 @@ class NewTopicSubscription(Subscription, MultipleNotificationsMixin):
     def get_notification_url(self, topic):
         return topic.get_absolute_url()
 
-    def get_notification_url(self, topic):
+    def get_notification_title(self, topic):
         return topic.title
-
-    def get_email_subject(self, notification):
-        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
-
-    def get_email_context(self, notification):
-        return {
-            'username': self.profile.user.username,
-            'title': notification.title,
-            'url': settings.ZDS_APP['site']['url'] + notification.url,
-            'author': notification.sender.user.username,
-            'site_name': settings.ZDS_APP['site']['litteral_name']
-        }
 
 
 class PingSubscription(AnswerSubscription):
     """
     Subscription to ping of a user
     """
+    module = _(u'Forum')
+    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux mentions>')\
