@@ -398,10 +398,10 @@ def move_topic(request):
 
     # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
     # This avoids unreachable notifications.
-    followers = AnswerSubscription.get_subscribers(topic)
+    followers = AnswerSubscription.objects.get_subscribers(topic)
     for follower in followers:
         if not forum.can_read(follower):
-            subscription = AnswerSubscription.get_existing(follower.profile, topic, is_active=True)
+            subscription = AnswerSubscription.objects.get_existing(follower.profile, topic, is_active=True)
             subscription.deactivate()
     messages.success(request,
                      u"Le sujet {0} a bien été déplacé dans {1}."
@@ -435,7 +435,7 @@ def edit(request):
     data = request.POST
     resp = {}
     g_topic = get_object_or_404(Topic, pk=topic_pk)
-    subscription = AnswerSubscription.get_existing(request.user.profile, g_topic)
+    subscription = AnswerSubscription.objects.get_existing(request.user.profile, g_topic)
     if "follow" in data:
         if data["follow"] == "1":
             if subscription is not None:
@@ -1192,7 +1192,7 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
-        subscription = NewTopicSubscription.get_existing(request.user.profile, content)
+        subscription = NewTopicSubscription.objects.get_existing(request.user.profile, content)
         if data["follow"] == "1":
             if subscription is not None:
                 subscription.activate()
