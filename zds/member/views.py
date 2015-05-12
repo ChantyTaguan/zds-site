@@ -27,7 +27,7 @@ from django.views.generic import DetailView, UpdateView, CreateView
 from forms import LoginForm, MiniProfileForm, ProfileForm, RegisterForm, \
     ChangePasswordForm, ChangeUserForm, ForgotPasswordForm, NewPasswordForm, \
     OldTutoForm, PromoteMemberForm, KarmaForm
-from zds.notification.models import AnswerSubscription, Notification, Subscription
+from zds.notification.models import Notification, Subscription, TopicAnswerSubscription
 from zds.utils.models import Comment, CommentLike, CommentDislike
 from models import Profile, TokenForgotPassword, TokenRegister, KarmaNote
 from zds.article.models import Article
@@ -921,7 +921,7 @@ def settings_promote(request, user_pk):
                                          .format(user.username, group.name))
 
                         content_subscription_type = ContentType.objects.get(model="topic")
-                        subscription_list = AnswerSubscription.objects\
+                        subscription_list = TopicAnswerSubscription.objects\
                             .filter(profile=user.profile,
                                     content_type__pk=content_subscription_type.pk, is_active=True)
                         for subscription in subscription_list:
@@ -932,7 +932,7 @@ def settings_promote(request, user_pk):
 
             user.groups.clear()
             content_subscription_type = ContentType.objects.get(model="topic")
-            subscription_list = AnswerSubscription.objects\
+            subscription_list = TopicAnswerSubscription.objects\
                 .filter(profile=user.profile,
                         content_type__pk=content_subscription_type.pk, active=True)
             for subscription in subscription_list:

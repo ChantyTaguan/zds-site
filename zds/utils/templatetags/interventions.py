@@ -10,7 +10,7 @@ from django.db.models import F
 from zds.article.models import Reaction, ArticleRead
 from zds.forum.models import never_read as never_read_topic, Post, TopicRead, Topic
 from zds.mp.models import PrivateTopic
-from zds.notification.models import Notification, Subscription, AnswerSubscription, UpdateTutorialSubscription
+from zds.notification.models import Notification, UpdateTutorialSubscription, TopicAnswerSubscription
 from zds.tutorial.models import Note, TutorialRead
 from zds.utils import get_current_user
 from zds.utils.models import Alert
@@ -37,7 +37,7 @@ def humane_delta(value):
 
 @register.filter('followed_topics')
 def followed_topics(user):
-    topics_followed = AnswerSubscription.objects.filter(profile=user.profile, content_type__model='topic', is_active=True)\
+    topics_followed = TopicAnswerSubscription.objects.filter(profile=user.profile, content_type__model='topic', is_active=True)\
         .order_by('-last_notification__pubdate')[:10]
     # This period is a map for link a moment (Today, yesterday, this week, this month, etc.) with
     # the number of days for which we can say we're still in the period
@@ -93,12 +93,12 @@ def notif_url(notification):
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    subscription = AnswerSubscription.objects.get_existing(get_current_user().profile, content_subscription, is_active=True)
+    subscription = TopicAnswerSubscription.objects.get_existing(get_current_user().profile, content_subscription, is_active=True)
     return subscription is not None
 
 @register.filter('has_suscribed_email_new')
 def has_suscribed_email_new(content_subscription):
-    subscription = AnswerSubscription(get_current_user().profile, content_subscription, is_active=True)
+    subscription = TopicAnswerSubscription(get_current_user().profile, content_subscription, is_active=True)
     if subscription is not None:
         return subscription.by_email
     else:
