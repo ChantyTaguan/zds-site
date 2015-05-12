@@ -70,12 +70,89 @@ class Subscription(models.Model):
         self.last_notification = notification
         self.save()
 
+    def send_email(self, notification):
+        subject = self.get_email_subject(notification)
+        from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
 
-class AnswerSubscription(Subscription):
+        receiver = self.profile.user
+        context = self.get_email_context(notification)
+        message_html = render_to_string('email/notification/' + self.model.name + '.html', context)
+        message_txt = render_to_string('email/notification/' + self.model.name + '.txt', context)
+
+        msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
+        msg.attach_alternative(message_html, "text/html")
+        msg.send()
+
+
+class SingleNotificationMixin(object):
+    """
+    Mixin for the subscription that can only have one active notification at a time
+    """
+
+    def send_notification(self, content=None, send_email=True, sender=None):
+        assert hasattr(self, "get_notification_url")
+        assert hasattr(self, "get_notification_title")
+        assert hasattr(self, "send_email")
+
+        if self.last_notification is None or self.last_notification.is_read:
+            notification = Notification(subscription=self, content_object=content, sender=sender)
+            notification.url = self.get_notification_url(content)
+            notification.title = self.get_notification_title(content)
+            notification.save()
+            self.set_last_notification(notification)
+            self.save()
+
+            if send_email & self.by_email:
+                self.send_email(notification)
+        elif self.last_notification is not None:
+            # Update last notif if the new content is older (case of unreading)
+            if not self.last_notification.is_read and self.last_notification.pubdate > content.pubdate:
+                self.last_notification.content_object = content
+                self.last_notification.save()
+
+    def mark_notification_read(self):
+        if self.last_notification is not None:
+            self.last_notification.is_read = True
+            self.last_notification.save()
+
+
+class MultipleNotificationsMixin(object):
+
+    def send_notification(self, content=None, send_email=True, sender=None):
+        assert hasattr(self, "get_notification_url")
+        assert hasattr(self, "get_notification_title")
+        assert hasattr(self, "send_email")
+
+        notification = Notification(subscription=self, content_object=content, sender=sender)
+        notification.url = self.get_notification_url(content)
+        notification.title = self.get_notification_title(content)
+        notification.save()
+        self.set_last_notification(notification)
+
+        if send_email & self.by_email:
+            self.send_email(notification)
+
+    def mark_notification_read(self, content):
+        if content is None:
+            raise Exception('Object content of notification must be defined')
+
+        content_notification_type = ContentType.objects.get_for_model(content)
+        try:
+            notification = Notification.objects.get(subscription=self,
+                                                    content_type__pk=content_notification_type.pk,
+                                                    object_id=content.pk, is_read=False)
+        except Notification.DoesNotExist:
+            notification = None
+        if notification is not None:
+            notification.is_read = True
+            notification.save()
+
+
+class AnswerSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to new answer, either in a topic, a article or a tutorial
     """
-
+    
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux réponses au {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
@@ -118,50 +195,26 @@ class AnswerSubscription(Subscription):
             users.append(subscription.profile.user)
         return users
 
-    def send_notification(self, answer=None, send_email=True):
-        if self.is_active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, content_object=answer, sender=answer.author.profile)
-                notification.url = answer.get_absolute_url()
-                notification.title = self.content_object.title
-                notification.save()
-                self.set_last_notification(notification)
-                self.save()
+    def get_notification_url(self, answer):
+        return answer.get_absolute_url()
 
-                if send_email & self.by_email:
-                    subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
-                    from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
+    def get_notification_title(self, answer):
+        return answer.topic.title
 
-                    receiver = self.profile.user
-                    context = {
-                                'username': receiver.username,
-                                'title': notification.get_title(),
-                                'url': settings.ZDS_APP['site']['url'] + notification.get_url(),
-                                'author': notification.get_author().user.username,
-                                'site_name': settings.ZDS_APP['site']['litteral_name']
-                    }
-                    message_html = render_to_string(
-                                'email/notification/answer_subscription/'
-                                + self.content_type.model + '.html', context)
-                    message_txt = render_to_string(
-                                'email/notification/answer_subscription/'
-                                + self.content_type.model + '.txt', context)
+    def get_email_subject(self, notification):
+        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
 
-                    msg = EmailMultiAlternatives(subject, message_txt, from_email, [receiver.email])
-                    msg.attach_alternative(message_html, "text/html")
-                    msg.send()
-            elif self.last_notification is not None:
-                if not self.last_notification.is_read and self.last_notification.pubdate > answer.pubdate:
-                    self.last_notification.content_object = answer
-                    self.last_notification.save()
-
-    def mark_notification_read(self):
-        if self.last_notification is not None:
-            self.last_notification.is_read = True
-            self.last_notification.save()
+    def get_email_context(self, notification):
+        return {
+            'username': self.profile.user.username,
+            'title': notification.title,
+            'url': settings.ZDS_APP['site']['url'] + notification.url,
+            'author': notification.sender.user.username,
+            'site_name': settings.ZDS_APP['site']['litteral_name']
+        }
 
 
-class UpdateTutorialSubscription(Subscription):
+class UpdateTutorialSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a tutorial
     """
@@ -208,25 +261,29 @@ class UpdateTutorialSubscription(Subscription):
             users.append(subscription.profile.user)
         return users
 
-    def send_notification(self, sender=None):
-        if self.is_active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, sender=sender)
-                notification.title = self.content_object.get_title()
-                notification.url = reverse('zds.tutorial.views.history', args=[
-                    self.content_object.pk,
-                    self.content_object.slug,
+    def get_notification_url(self, tutorial):
+        return reverse('zds.tutorial.views.history', args=[
+                    tutorial.pk,
+                    tutorial.slug,
                 ])
-                notification.save()
-                self.set_last_notification(notification)
 
-    def mark_notification_read(self):
-        if self.last_notification is not None:
-            self.last_notification.is_read = True
-            self.last_notification.save()
+    def get_notification_url(self, tutorial):
+        return tutorial.title
+
+    def get_email_subject(self, notification):
+        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Tutoriel'),notification.get_title())
+
+    def get_email_context(self, notification):
+        return {
+            'username': self.profile.user.username,
+            'title': notification.title,
+            'url': settings.ZDS_APP['site']['url'] + notification.url,
+            'author': notification.sender.user.username,
+            'site_name': settings.ZDS_APP['site']['litteral_name']
+        }
 
 
-class UpdateArticleSubscription(Subscription):
+class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a article
     """
@@ -273,25 +330,29 @@ class UpdateArticleSubscription(Subscription):
             users.append(subscription.profile.user)
         return users
 
-    def send_notification(self, sender=None):
-        if self.is_active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, sender=sender)
-                notification.title = self.content_object.get_title()
-                notification.url = reverse('zds.article.views.history', args=[
-                    self.content_object.pk,
-                    self.content_object.slug,
+    def get_notification_url(self, article):
+        return reverse('zds.tutorial.views.history', args=[
+                    article.pk,
+                    article.slug,
                 ])
-                notification.save()
-                self.set_last_notification(notification)
 
-    def mark_notification_read(self):
-        if self.last_notification is not None:
-            self.last_notification.is_read = True
-            self.last_notification.save()
+    def get_notification_url(self, article):
+        return article.title
+
+    def get_email_subject(self, notification):
+        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Tutoriel'),notification.get_title())
+
+    def get_email_context(self, notification):
+        return {
+            'username': self.profile.user.username,
+            'title': notification.title,
+            'url': settings.ZDS_APP['site']['url'] + notification.url,
+            'author': notification.sender.user.username,
+            'site_name': settings.ZDS_APP['site']['litteral_name']
+        }
 
 
-class PublicationSubscription(Subscription):
+class PublicationSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to the publication (public updates) of an article or tutorial
     """
@@ -338,21 +399,26 @@ class PublicationSubscription(Subscription):
             users.append(subscription.profile.user)
         return users
 
-    def send_notification(self, validation=None):
-        if self.is_active:
-            if self.last_notification is None or self.last_notification.is_read:
-                notification = Notification(subscription=self, content_object=validation, sender=self.content_object.author)
-                notification.url = self.content_object.get_absolute_url_online()
-                notification.title = self.content_object.get_title()
-                notification.save()
-                self.set_last_notification(notification)
+    def get_notification_url(self, publication):
+        return publication.get_absolute_url_online()
 
-    def mark_notification_read(self):
-        self.last_notification.is_read = True
-        self.last_notification.save()
+    def get_notification_url(self, publication):
+        return publication.title
+
+    def get_email_subject(self, notification):
+        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Publication'),notification.get_title())
+
+    def get_email_context(self, notification):
+        return {
+            'username': self.profile.user.username,
+            'title': notification.title,
+            'url': settings.ZDS_APP['site']['url'] + notification.url,
+            'author': notification.sender.user.username,
+            'site_name': settings.ZDS_APP['site']['litteral_name']
+        }
 
 
-class NewTopicSubscription(Subscription):
+class NewTopicSubscription(Subscription, MultipleNotificationsMixin):
     """
     Subscription to new topics in a forum or with a tag
     """
@@ -399,28 +465,23 @@ class NewTopicSubscription(Subscription):
             users.append(subscription.profile.user)
         return users
 
-    def send_notification(self, topic=None):
-        if self.is_active:
-            notification = Notification(subscription=self, content_object=topic, sender=topic.author.profile)
-            notification.url = topic.get_absolute_url()
-            notification.title = topic.title
-            notification.save()
-            self.set_last_notification(notification)
+    def get_notification_url(self, topic):
+        return topic.get_absolute_url()
 
-    def mark_notification_read(self, topic=None):
-        if topic is None:
-            raise Exception('topic must be defined')
+    def get_notification_url(self, topic):
+        return topic.title
 
-        content_notification_type = ContentType.objects.get(model="topic")
-        try:
-            notification = Notification.objects.get(subscription=self,
-                                                    content_type__pk=content_notification_type.pk,
-                                                    object_id=topic.pk, is_read=False)
-        except Notification.DoesNotExist:
-            notification = None
-        if notification is not None:
-            notification.is_read = True
-            notification.save()
+    def get_email_subject(self, notification):
+        return _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],_(u'Forum'),notification.get_title())
+
+    def get_email_context(self, notification):
+        return {
+            'username': self.profile.user.username,
+            'title': notification.title,
+            'url': settings.ZDS_APP['site']['url'] + notification.url,
+            'author': notification.sender.user.username,
+            'site_name': settings.ZDS_APP['site']['litteral_name']
+        }
 
 
 class PingSubscription(AnswerSubscription):

@@ -31,7 +31,7 @@ def unread_answer_event(sender, **kwargs):
     answer_to = kwargs.get('answer_to')
     subscription = AnswerSubscription.get_existing(user.profile, answer_to, is_active=True)
     if subscription is not None:
-        subscription.send_notification(answer=answer, send_email=False)
+        subscription.send_notification(content=answer, sender=answer.author.profile, send_email=False)
 
 
 @receiver(publication_read)
@@ -83,7 +83,7 @@ def saved_topic_event(sender, **kwargs):
                     object_id=topic.forum.pk, is_active=True)
         for subscription in subscription_list:
             if subscription.profile != topic.author.profile:
-                subscription.send_notification(topic=topic)
+                subscription.send_notification(content=topic, sender=topic.author.profile)
 
         # Notify the tag followers
         content_subscription_type = ContentType.objects.get(model="tag")
@@ -93,7 +93,7 @@ def saved_topic_event(sender, **kwargs):
                         object_id=topic.forum.pk, is_active=True)
             for subscription in subscription_list:
                 if subscription.profile != topic.author.profile:
-                    subscription.send_notification(topic=topic)
+                    subscription.send_notification(content=topic, sender=topic.author.profile)
 
         # Follow the topic
         subscription = AnswerSubscription.get_existing(topic.author.profile, topic)
@@ -116,7 +116,7 @@ def answer_topic_event(sender, **kwargs):
                     object_id=post.topic.pk, is_active=True)
         for subscription in subscription_list:
             if subscription.profile != post.author.profile:
-                subscription.send_notification(answer=post)
+                subscription.send_notification(content=post, sender=post.author.profile)
 
         # Follow topic on answering
         subscription = AnswerSubscription.get_existing(post.author.profile, post.topic)
@@ -140,7 +140,7 @@ def new_reaction_event(sender, **kwargs):
                     object_id=reaction.article.pk, is_active=True)
         for subscription in subscription_list:
             if subscription.profile != reaction.author.profile:
-                subscription.send_notification(answer=reaction)
+                subscription.send_notification(content=reaction, sender=reaction.author.profile)
 
         # Follow article on answering
         subscription = AnswerSubscription.get_existing(reaction.author.profile, reaction.article)
