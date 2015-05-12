@@ -10,8 +10,7 @@ from zds.forum.models import Post, Topic
 from zds.notification.models import NewTopicSubscription, Notification, TopicAnswerSubscription, \
     TutorialAnswerSubscription, ArticleAnswerSubscription, TutorialPublicationSubscription, \
     ArticlePublicationSubscription
-from zds.tutorial.models import Tutorial
-from zds.utils.models import Tag
+from zds.tutorial.models import Tutorial, Note
 
 
 def disable_for_loaddata(signal_handler):
@@ -30,16 +29,12 @@ def disable_for_loaddata(signal_handler):
 # is sent whenever an answer is set as unread
 answer_unread = Signal(providing_args=["instance", "user"])
 
-# is sent when a topic is read
-topic_read = Signal(providing_args=["instance", "user"])
+# is sent when a content is read (topic, article or tutorial)
+content_read = Signal(providing_args=["instance", "user"])
 
-# is sent when a publication (article or tutorial is sent
-# TO DO : probably not working, might need to be separated between article and tutorial
-publication_read = Signal(providing_args=["instance", "user"])
-
-@receiver(answer_unread)
+@receiver(answer_unread, sender=Topic)
 @disable_for_loaddata
-def unread_answer_event(sender=Topic, **kwargs):
+def unread_topic_event(sender, **kwargs):
     """
     :param kwargs: contains
         - instance : the answer being marked as unread
@@ -53,8 +48,8 @@ def unread_answer_event(sender=Topic, **kwargs):
         subscription.send_notification(content=answer, sender=answer.author.profile, send_email=False)
 
 
-@receiver(publication_read)
-def mark_tutorial_notifications_read(sender=Tutorial, **kwargs):
+@receiver(content_read, sender=Tutorial)
+def mark_tutorial_notifications_read(sender, **kwargs):
     """
     :param kwargs:  contains
         - instance : the tutorial marked as read
@@ -63,19 +58,19 @@ def mark_tutorial_notifications_read(sender=Tutorial, **kwargs):
         Marks as read the notifications of the PublicationSubscription
         and AnswerSubscription of the user to the tutorial
     """
-    publication = kwargs.get('instance')
+    tutorial = kwargs.get('instance')
     user = kwargs.get('user')
-    subscription = TutorialPublicationSubscription.objects.get_existing(user, publication, is_active=True)
+    subscription = TutorialPublicationSubscription.objects.get_existing(user, tutorial, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read()
 
-    answer_subscription = TutorialAnswerSubscription.objects.get_existing(user, publication, is_active=True)
+    answer_subscription = TutorialAnswerSubscription.objects.get_existing(user, tutorial, is_active=True)
     if subscription is not None:
         answer_subscription.mark_notification_read()
 
 
-@receiver(publication_read)
-def mark_article_notifications_read(sender=Article, **kwargs):
+@receiver(content_read, sender=Article)
+def mark_article_notifications_read(sender, **kwargs):
     """
     :param kwargs:  contains
         - instance : the article marked as read
@@ -84,18 +79,18 @@ def mark_article_notifications_read(sender=Article, **kwargs):
         Marks as read the notifications of the PublicationSubscription
         and AnswerSubscription of the user to the article
     """
-    publication = kwargs.get('instance')
+    article = kwargs.get('instance')
     user = kwargs.get('user')
-    subscription = ArticlePublicationSubscription.objects.get_existing(user, publication, is_active=True)
+    subscription = ArticlePublicationSubscription.objects.get_existing(user, article, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read()
 
-    answer_subscription = ArticleAnswerSubscription.objects.get_existing(user, publication, is_active=True)
+    answer_subscription = ArticleAnswerSubscription.objects.get_existing(user, article, is_active=True)
     if subscription is not None:
         answer_subscription.mark_notification_read()
 
 
-@receiver(topic_read)
+@receiver(content_read, sender=Topic)
 def mark_topic_notifications_read(sender, **kwargs):
     """
     :param kwargs:  contains
@@ -125,7 +120,6 @@ def mark_topic_notifications_read(sender, **kwargs):
             subscription.mark_notification_read(topic=topic)
 
 
-# Forums
 @receiver(post_save, sender=Topic)
 @disable_for_loaddata
 def saved_topic_event(sender, **kwargs):
@@ -133,7 +127,7 @@ def saved_topic_event(sender, **kwargs):
     :param kwargs:  contains
         - instance : the new topic
 
-        Sends NewTopicSubscription to the subscribers to the forum ogf the topic
+        Sends NewTopicSubscription to the subscribers to the forum of the topic
         and subscribe the author to the answers of the topic
     """
     if kwargs.get('created', True):
@@ -218,7 +212,6 @@ def answer_topic_event(sender, **kwargs):
             subscription.save()
 
 
-# Article
 @receiver(post_save, sender=Reaction)
 @disable_for_loaddata
 def new_reaction_event(sender, **kwargs):
@@ -226,7 +219,7 @@ def new_reaction_event(sender, **kwargs):
     :param kwargs:  contains
         - instance : the new reaction
 
-        Sends TopicAnswerSubscription to the subscribers to the article
+        Sends ArticleAnswerSubscription to the subscribers to the article
         and subscribe the author to the following answers to the article
     """
     if kwargs.get('created', True):
@@ -246,4 +239,34 @@ def new_reaction_event(sender, **kwargs):
             subscription.activate()
         else:
             subscription = ArticleAnswerSubscription(profile=reaction.author.profile, content_object=reaction.article)
+            subscription.save()
+
+
+@receiver(post_save, sender=Note)
+@disable_for_loaddata
+def new_note_event(sender, **kwargs):
+    """
+    :param kwargs:  contains
+        - instance : the new note
+
+        Sends TutorialAnswerSubscription to the subscribers to the tutorial
+        and subscribe the author to the following answers to the tutorial
+    """
+    if kwargs.get('created', True):
+        note = kwargs.get('instance')
+
+        content_subscription_type = ContentType.objects.get(model="article")
+        subscription_list = TutorialAnswerSubscription.objects\
+            .filter(content_type__pk=content_subscription_type.pk,
+                    object_id=note.tutorial.pk, is_active=True)
+        for subscription in subscription_list:
+            if subscription.profile != note.author.profile:
+                subscription.send_notification(content=note, sender=note.author.profile)
+
+        # Follow tutorial on answering
+        subscription = TutorialAnswerSubscription.objects.get_existing(note.author.profile, note.tutorial)
+        if subscription is not None:
+            subscription.activate()
+        else:
+            subscription = TutorialAnswerSubscription(profile=note.author.profile, content_object=note.tutorial)
             subscription.save()

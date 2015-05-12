@@ -170,7 +170,7 @@ class PostEditMixin(object):
             else:
                 topic_read.delete()
 
-        signals.answer_unread.send(sender=None, instance=post, user=user, answer_to=post.topic)
+        signals.answer_unread.send(sender=post.topic.__class__, instance=post, user=user, answer_to=post.topic)
 
     @staticmethod
     def perform_like_post(post, user):
