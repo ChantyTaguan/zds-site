@@ -11,7 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from django.db import models
 from zds.member.models import Profile
-from zds.notification.managers import NotificationManager
+from zds.notification.managers import NotificationManager, SubscriptionManager
 
 
 class Subscription(models.Model):
@@ -152,48 +152,11 @@ class AnswerSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to new answer, either in a topic, a article or a tutorial
     """
-    
+    objects = SubscriptionManager()
+
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux réponses au {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
-
-    @staticmethod
-    def get_existing(profile, content_object, is_active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if is_active:
-                existing = AnswerSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, is_active=True)
-            else:
-                existing = AnswerSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except AnswerSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = AnswerSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = AnswerSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
 
     def get_notification_url(self, answer):
         return answer.get_absolute_url()
@@ -218,48 +181,11 @@ class UpdateTutorialSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a tutorial
     """
+    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux mises à jour du tutorial #{1}>')\
             .format(self.profile, self.object_id)
-
-    @staticmethod
-    def get_existing(profile, content_object, is_active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if is_active:
-                existing = UpdateTutorialSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, is_active=True)
-            else:
-                existing = UpdateTutorialSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except UpdateTutorialSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = UpdateTutorialSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = UpdateTutorialSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
 
     def get_notification_url(self, tutorial):
         return reverse('zds.tutorial.views.history', args=[
@@ -287,48 +213,11 @@ class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a article
     """
+    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux mises à jour de l\'article #{1}>')\
             .format(self.profile, self.object_id)
-
-    @staticmethod
-    def get_existing(profile, content_object, is_active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if is_active:
-                existing = UpdateArticleSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, is_active=True)
-            else:
-                existing = UpdateArticleSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except UpdateArticleSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = UpdateArticleSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = UpdateArticleSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
 
     def get_notification_url(self, article):
         return reverse('zds.tutorial.views.history', args=[
@@ -356,48 +245,11 @@ class PublicationSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to the publication (public updates) of an article or tutorial
     """
+    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux publications du {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
-
-    @staticmethod
-    def get_existing(profile, content_object, is_active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if is_active:
-                existing = PublicationSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, is_active=True)
-            else:
-                existing = PublicationSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except PublicationSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = PublicationSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = PublicationSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
 
     def get_notification_url(self, publication):
         return publication.get_absolute_url_online()
@@ -422,48 +274,11 @@ class NewTopicSubscription(Subscription, MultipleNotificationsMixin):
     """
     Subscription to new topics in a forum or with a tag
     """
+    objects = SubscriptionManager()
 
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux nouveaux sujets du {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
-
-    @staticmethod
-    def get_existing(profile, content_object, is_active=False):
-        content_type = ContentType.objects.get_for_model(content_object)
-        try:
-            if is_active:
-                existing = NewTopicSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile, is_active=True)
-            else:
-                existing = NewTopicSubscription.objects.get(
-                    object_id=content_object.pk,
-                    content_type__pk=content_type.pk,
-                    profile=profile)
-        except NewTopicSubscription.DoesNotExist:
-            existing = None
-        return existing
-
-    @staticmethod
-    def get_subscribers(content_object, only_by_email=False):
-        users = []
-
-        content_type = ContentType.objects.get_for_model(content_object)
-        if only_by_email:
-            # if I'm only interested by the email subscription
-            subscription_list = NewTopicSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk,
-                by_email=True)
-        else:
-            subscription_list = NewTopicSubscription.objects.filter(
-                object_id=content_object.pk,
-                content_type__pk=content_type.pk)
-
-        for subscription in subscription_list:
-            users.append(subscription.profile.user)
-        return users
 
     def get_notification_url(self, topic):
         return topic.get_absolute_url()

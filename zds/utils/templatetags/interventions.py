@@ -93,7 +93,7 @@ def notif_url(notification):
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    subscription = AnswerSubscription.get_existing(get_current_user().profile, content_subscription, is_active=True)
+    subscription = AnswerSubscription.objects.get_existing(get_current_user().profile, content_subscription, is_active=True)
     return subscription is not None
 
 @register.filter('has_suscribed_email_new')
@@ -106,7 +106,7 @@ def has_suscribed_email_new(content_subscription):
 
 @register.filter('has_subscribed_update_tutorial')
 def has_subscribed_update(content_subscription):
-    subscription = UpdateTutorialSubscription.get_existing(get_current_user().profile, content_subscription, is_active=True)
+    subscription = UpdateTutorialSubscription.objects.get_existing(get_current_user().profile, content_subscription, is_active=True)
     return subscription is not None
 
 @register.filter('from_topic')

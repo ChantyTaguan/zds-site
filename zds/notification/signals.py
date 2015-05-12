@@ -29,7 +29,7 @@ def unread_answer_event(sender, **kwargs):
     answer = kwargs.get('instance')
     user = kwargs.get('user')
     answer_to = kwargs.get('answer_to')
-    subscription = AnswerSubscription.get_existing(user.profile, answer_to, is_active=True)
+    subscription = AnswerSubscription.objects.get_existing(user.profile, answer_to, is_active=True)
     if subscription is not None:
         subscription.send_notification(content=answer, sender=answer.author.profile, send_email=False)
 
@@ -38,11 +38,11 @@ def unread_answer_event(sender, **kwargs):
 def mark_publication_notifications_read(sender, **kwargs):
     publication = kwargs.get('instance')
     user = kwargs.get('user')
-    subscription = PublicationSubscription.get_existing(user, publication, is_active=True)
+    subscription = PublicationSubscription.objects.get_existing(user, publication, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read()
 
-    answer_subscription = AnswerSubscription.get_existing(user, publication, is_active=True)
+    answer_subscription = AnswerSubscription.objects.get_existing(user, publication, is_active=True)
     if subscription is not None:
         answer_subscription.mark_notification_read()
 
@@ -53,18 +53,18 @@ def mark_topic_notifications_read(sender, **kwargs):
     user = kwargs.get('user')
 
     # Subscription to the topic
-    subscription = AnswerSubscription.get_existing(user.profile, topic, is_active=True)
+    subscription = AnswerSubscription.objects.get_existing(user.profile, topic, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read()
 
     # Subscription to the forum
-    subscription = NewTopicSubscription.get_existing(user.profile, topic.forum, is_active=True)
+    subscription = NewTopicSubscription.objects.get_existing(user.profile, topic.forum, is_active=True)
     if subscription is not None:
         subscription.mark_notification_read(topic=topic)
 
     # Subscription to the tags
     for tag in topic.tags.all():
-        subscription = NewTopicSubscription.get_existing(user.profile, tag, is_active=True)
+        subscription = NewTopicSubscription.objects.get_existing(user.profile, tag, is_active=True)
         if subscription is not None:
             subscription.mark_notification_read(topic=topic)
 
@@ -96,7 +96,7 @@ def saved_topic_event(sender, **kwargs):
                     subscription.send_notification(content=topic, sender=topic.author.profile)
 
         # Follow the topic
-        subscription = AnswerSubscription.get_existing(topic.author.profile, topic)
+        subscription = AnswerSubscription.objects.get_existing(topic.author.profile, topic)
         if subscription is not None:
             subscription.activate()
         else:
@@ -119,7 +119,7 @@ def answer_topic_event(sender, **kwargs):
                 subscription.send_notification(content=post, sender=post.author.profile)
 
         # Follow topic on answering
-        subscription = AnswerSubscription.get_existing(post.author.profile, post.topic)
+        subscription = AnswerSubscription.objects.get_existing(post.author.profile, post.topic)
         if subscription is not None:
             subscription.activate()
         else:
@@ -143,7 +143,7 @@ def new_reaction_event(sender, **kwargs):
                 subscription.send_notification(content=reaction, sender=reaction.author.profile)
 
         # Follow article on answering
-        subscription = AnswerSubscription.get_existing(reaction.author.profile, reaction.article)
+        subscription = AnswerSubscription.objects.get_existing(reaction.author.profile, reaction.article)
         if subscription is not None:
             subscription.activate()
         else:

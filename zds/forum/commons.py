@@ -16,7 +16,7 @@ from zds.utils.models import Alert, CommentLike, CommentDislike
 class TopicEditMixin(object):
     @staticmethod
     def perform_follow(active, topic, user):
-        subscription = AnswerSubscription.get_existing(user.profile, topic)
+        subscription = AnswerSubscription.objects.get_existing(user.profile, topic)
         if active:
             if subscription is not None:
                 subscription.activate()
@@ -30,7 +30,7 @@ class TopicEditMixin(object):
 
     @staticmethod
     def perform_follow_by_email(active, topic, user):
-        subscription = AnswerSubscription.get_existing(user.profile, topic)
+        subscription = AnswerSubscription.objects.get_existing(user.profile, topic)
         if active:
             if subscription is not None:
                 subscription.activate(by_email=True)
@@ -86,10 +86,10 @@ class TopicEditMixin(object):
 
             # If the topic is moved in a restricted forum, users that cannot read this topic any more un-follow it.
             # This avoids unreachable notifications.
-            followers = AnswerSubscription.get_subscribers(topic)
+            followers = AnswerSubscription.objects.get_subscribers(topic)
             for follower in followers:
                 if not forum.can_read(follower):
-                    subscription = AnswerSubscription.get_existing(follower.profile, topic, is_active=True)
+                    subscription = AnswerSubscription.objects.get_existing(follower.profile, topic, is_active=True)
                     subscription.deactivate()
             messages.success(request,
                              _(u"Le sujet « {0} » a bien été déplacé dans « {1} ».").format(topic.title, forum.title))

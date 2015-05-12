@@ -733,7 +733,7 @@ def modify(request):
                     direct=False)
 
                 for author in article.authors.all():
-                    subscription = AnswerSubscription.get_existing(author.profile, article)
+                    subscription = AnswerSubscription.objects.get_existing(author.profile, article)
                     if subscription is None:
                         subscription = AnswerSubscription(profile=author.profile, content_object=article)
                         subscription.save()
@@ -907,7 +907,7 @@ def modify(request):
 
     if 'follow' in request.POST:
         resp = {}
-        subscription = AnswerSubscription.get_existing(article.author.profile, article)
+        subscription = AnswerSubscription.objects.get_existing(article.author.profile, article)
         if data["follow"] == "1":
             if subscription is None:
                 subscription = AnswerSubscription(profile=article.author.profile, content_object=article)

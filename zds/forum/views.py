@@ -691,7 +691,7 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
-        subscription = NewTopicSubscription.get_existing(request.user.profile, content)
+        subscription = NewTopicSubscription.objects.get_existing(request.user.profile, content)
         if data["follow"] == "1":
             if subscription is not None:
                 subscription.activate()
