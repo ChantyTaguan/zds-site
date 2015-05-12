@@ -163,7 +163,7 @@ def view_online(request, article_pk, article_slug):
         article_version['antispam'] = article.antispam()
 
         # we mark this article read.
-        publication_read.send(sender=None, instance=article, user=request.user)
+        content_read.send(sender=article.__class__, instance=article, user=request.user)
 
     # Find all reactions of the article.
     reactions = Reaction.objects\

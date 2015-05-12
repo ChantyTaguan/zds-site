@@ -147,7 +147,7 @@ def topic(request, topic_pk, topic_slug):
         if never_read(topic):
             mark_read(topic)
 
-        signals.topic_read.send(sender=None, instance=topic, user=request.user)
+        signals.content_read.send(sender=topic.__class__, instance=topic, user=request.user)
 
     # Retrieves all posts of the topic and use paginator with them.
     posts = \
@@ -870,7 +870,7 @@ def unread_post(request):
         else:
             t.delete()
 
-    signals.answer_unread.send(sender=None, instance=post, user=request.user, answer_to=post.topic)
+    signals.answer_unread.send(sender=post.topic.__class__, instance=post, user=request.user, answer_to=post.topic)
 
     return redirect(reverse("zds.forum.views.details", args=[post.topic.forum.category.slug, post.topic.forum.slug]))
 
