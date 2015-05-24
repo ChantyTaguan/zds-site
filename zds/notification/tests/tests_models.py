@@ -7,7 +7,7 @@ from zds.forum.factories import TopicFactory, CategoryFactory, ForumFactory, Pos
 from zds.forum.models import Topic
 
 from zds.member.factories import ProfileFactory
-from zds.notification.models import Subscription
+from zds.notification.models import Subscription, TopicAnswerSubscription
 
 
 class SubscriptionTest(TestCase):
@@ -33,10 +33,8 @@ class SubscriptionTest(TestCase):
         self.assertEqual(log, True)
 
     def test_unicode(self):
-        self.subscription = Subscription(profile=self.profile1, type='NEW_CONTENT', content_object=self.topic1)
-        title = u'<Abonnement du membre "{0}" aux notifications de type {1} pour le {3}, #{2}>'.format(
+        self.subscription = TopicAnswerSubscription(profile=self.profile1, content_object=self.topic1)
+        title = u'<Abonnement du membre "{0}" aux réponses au sujet #{1}>'.format(
             self.profile1,
-            'NEW_CONTENT',
-            self.topic1.pk,
-            ContentType.objects.get(app_label="forum", model="topic"))
+            self.topic1.pk)
         self.assertEqual(title, self.subscription.__unicode__())

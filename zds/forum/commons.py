@@ -16,14 +16,10 @@ from zds.utils.models import Alert, CommentLike, CommentDislike
 class TopicEditMixin(object):
     @staticmethod
     def perform_follow(active, topic, user):
-        subscription = TopicAnswerSubscription.objects.get_existing(user.profile, topic)
         if active:
-            if subscription is not None:
-                subscription.activate()
-            else:
-                subscription = TopicAnswerSubscription(profile=user.profile, content_object=topic)
-                subscription.save()
+            TopicAnswerSubscription.objects.get_or_create_active(user.profile, topic)
             return -1
+        subscription = TopicAnswerSubscription.objects.get_existing(user.profile, topic)
         if subscription is not None:
             subscription.deactivate()
         return 1
@@ -170,7 +166,7 @@ class PostEditMixin(object):
             else:
                 topic_read.delete()
 
-        signals.answer_unread.send(sender=post.topic.__class__, instance=post, user=user, answer_to=post.topic)
+        signals.answer_unread.send(sender=post.topic.__class__, instance=post, user=user)
 
     @staticmethod
     def perform_like_post(post, user):

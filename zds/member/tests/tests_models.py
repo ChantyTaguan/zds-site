@@ -13,9 +13,9 @@ from hashlib import md5
 
 from zds.article.factories import ArticleFactory
 from zds.forum.factories import CategoryFactory, ForumFactory, TopicFactory, PostFactory
-from zds.forum.models import TopicFollowed
 from zds.member.factories import ProfileFactory, StaffProfileFactory
 from zds.member.models import TokenForgotPassword, TokenRegister, Profile
+from zds.notification.models import TopicAnswerSubscription
 from zds.tutorial.factories import MiniTutorialFactory
 from zds.gallery.factories import GalleryFactory, ImageFactory
 from zds.utils.models import Alert
@@ -251,16 +251,6 @@ class MemberModelsTest(TestCase):
         self.user1.user.is_active = True
         self.assertTrue(self.user1.can_write_now())
         # TODO Some conditions still need to be tested
-
-    def test_get_followed_topics(self):
-        # Start with 0
-        self.assertEqual(len(self.user1.get_followed_topics()), 0)
-        # Follow !
-        TopicFollowed.objects.create(topic=self.forumtopic, user=self.user1.user)
-        # Should be 1
-        topicsfollowed = self.user1.get_followed_topics()
-        self.assertEqual(len(topicsfollowed), 1)
-        self.assertEqual(self.forumtopic, topicsfollowed[0])
 
     def test_get_city_with_wrong_ip(self):
         # Set a local IP to the user

@@ -292,14 +292,6 @@ class Profile(models.Model):
         else:
             return False
 
-    def get_followed_topics(self):
-        """
-        :return: All forum topics followed by this user.
-        """
-        return Topic.objects.filter(topicfollowed__user=self.user)\
-            .order_by('-last_message__pubdate')
-
-
 @receiver(models.signals.post_delete, sender=User)
 def auto_delete_token_on_unregistering(sender, instance, **kwargs):
     """

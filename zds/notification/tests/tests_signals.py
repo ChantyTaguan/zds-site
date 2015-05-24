@@ -1,13 +1,17 @@
 from django.conf import settings
+from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.urlresolvers import reverse
-from django.db import transaction
 from django.test import TestCase
+from zds.article.factories import ArticleFactory, ReactionFactory
+from zds.article.models import Validation
 from zds.forum.factories import CategoryFactory, ForumFactory, TopicFactory, PostFactory, TagFactory
 from zds.forum.models import Topic
-from zds.member.factories import ProfileFactory
-from zds.notification.models import Notification, TopicAnswerSubscription, NewTopicSubscription
+from zds.member.factories import ProfileFactory, StaffProfileFactory
+from zds.notification.models import Notification, TopicAnswerSubscription, NewTopicSubscription, \
+    UpdateArticleSubscription, ArticleAnswerSubscription
+from zds.tutorial.factories import LicenceFactory
 from zds.utils import slugify
 
 
@@ -208,7 +212,118 @@ class NotificationForumTest(TestCase):
         self.assertEquals(len(mail.outbox), 1)
 
 
+class NotificationArticleTest(TestCase):
 
+    def setUp(self):
+        settings.EMAIL_BACKEND = \
+            'django.core.mail.backends.locmem.EmailBackend'
+        self.mas = ProfileFactory().user
+        settings.ZDS_APP['member']['bot_account'] = self.mas.username
 
+        self.profile1 = ProfileFactory()
+        self.profile1.user.email = u"foo@\xfbgmail.com"
+        self.profile1.save()
 
+        self.profile2 = ProfileFactory()
 
+        self.staff = StaffProfileFactory().user
+
+        self.licence = LicenceFactory()
+
+        bot = Group(name=settings.ZDS_APP["member"]["bot_group"])
+        bot.save()
+
+        log = self.client.login(
+            username=self.profile1.user.username,
+            password='hostel77')
+        self.assertEqual(log, True)
+
+        self.article = ArticleFactory()
+        self.article.authors.add(self.profile1.user)
+        self.article.licence = self.licence
+        self.article.save()
+
+        # ask public article
+        pub = self.client.post(
+            reverse('zds.article.views.modify'),
+            {
+                'article': self.article.pk,
+                'comment': u'Valide ! Je le veux.',
+                'pending': 'Demander validation',
+                'version': self.article.sha_draft,
+                'is_major': True
+            },
+            follow=False)
+        self.assertEqual(pub.status_code, 302)
+        self.assertEqual(Validation.objects.count(), 1)
+
+        self.client.logout()
+        login_check = self.client.login(
+            username=self.staff.username,
+            password='hostel77')
+        self.assertEqual(login_check, True)
+
+        # reserve tutorial
+        validation = Validation.objects.get(
+            article__pk=self.article.pk)
+        pub = self.client.post(
+            reverse('zds.article.views.reservation', args=[validation.pk]),
+            follow=False)
+        self.assertEqual(pub.status_code, 302)
+
+        # publish article
+        pub = self.client.post(
+            reverse('zds.article.views.modify'),
+            {
+                'article': self.article.pk,
+                'comment-v': u'Cet article est excellent',
+                'valid-article': 'Demander validation',
+                'is_major': True
+            },
+            follow=False)
+        self.assertEqual(pub.status_code, 302)
+        self.assertEquals(len(mail.outbox), 1)
+        mail.outbox = []
+
+    def test_answer_subscription(self):
+
+        self.article.authors.add(self.profile2.user)
+        self.article.save()
+
+        subscription1 = ArticleAnswerSubscription.objects.get_existing(
+            profile=self.profile1, content_object=self.article)
+        self.assertEquals(subscription1.is_active, True)
+
+        subscription2 = ArticleAnswerSubscription.objects.get_existing(
+            profile=self.profile2, content_object=self.article)
+        self.assertEquals(subscription2.is_active, True)
+
+        reaction = ReactionFactory(
+            article=self.article,
+            author=self.profile1.user,
+            position=1)
+
+        notification = Notification.objects.get(subscription=subscription2)
+        self.assertEqual(notification.is_read, False)
+        self.assertEqual(notification.sender, self.profile1)
+        self.assertEqual(notification.url, reaction.get_absolute_url())
+
+        notification.is_read = True
+        notification.save()
+
+        subscription1.activate_email()
+
+        self.assertEquals(len(mail.outbox), 0)
+        reaction2 = ReactionFactory(
+            article=self.article,
+            author=self.profile2.user,
+            position=2)
+
+        notification = Notification.objects.get(subscription=subscription1)
+        self.assertEqual(notification.is_read, False)
+
+        notification2 = Notification.objects.filter(subscription=subscription2).all()
+        self.assertEqual(notification2.count(), 1)
+        self.assertEqual(notification2[0].is_read, True)
+
+        self.assertEquals(len(mail.outbox), 1)
