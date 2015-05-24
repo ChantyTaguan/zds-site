@@ -27,6 +27,20 @@ class SubscriptionManager(models.Manager):
             existing = None
         return existing
 
+    def get_or_create_active(self, profile, content_object):
+        content_type = ContentType.objects.get_for_model(content_object)
+        try:
+            subscription = self.get(
+                object_id=content_object.pk,
+                content_type__pk=content_type.pk,
+                profile=profile)
+            if not subscription.is_active:
+                subscription.activate()
+        except ObjectDoesNotExist:
+            subscription = self.model(profile, content_object)
+
+        return subscription
+
     def get_subscribers(self, content_object, only_by_email=False):
         users = []
 
@@ -45,6 +59,19 @@ class SubscriptionManager(models.Manager):
         for subscription in subscription_list:
             users.append(subscription.profile.user)
         return users
+
+    def get_objects_followed_by(self, profile):
+        """
+        :return: All objects followed by this user.
+        """
+        followed_objects = []
+        subscription_list = self.filter(profile=self, is_active=True)\
+            .order_by('last_notification__pubdate')
+
+        for subscription in subscription_list:
+            followed_objects.append(subscription.content_object)
+
+        return followed_objects
 
 
 class NotificationManager(models.Manager):

@@ -9,7 +9,7 @@ from zds.forum.models import Post, Topic
 
 from zds.notification.models import NewTopicSubscription, Notification, TopicAnswerSubscription, \
     TutorialAnswerSubscription, ArticleAnswerSubscription, TutorialPublicationSubscription, \
-    ArticlePublicationSubscription
+    ArticlePublicationSubscription, UpdateTutorialSubscription, UpdateArticleSubscription
 from zds.tutorial.models import Tutorial, Note
 
 
@@ -157,7 +157,8 @@ def add_tags_topic_event(sender, **kwargs):
     """
     Sent when there is a change in the many2many relationship between topic and tags
     :param kwargs:  contains
-        - instance : the technical class reporesenting the many2many relationship
+        - sender : the technical class representing the many2many relationship
+        - instance : the technical class representing the many2many relationship
         - action : "pre_add", "post_add", ... action having sent the signal
         - reverse : indicates which side of the relation is updated
             (from what I understand, forward is from topic to tags, so when the tag side is modified,
@@ -179,6 +180,47 @@ def add_tags_topic_event(sender, **kwargs):
             for subscription in subscription_list:
                 if subscription.profile != topic.author.profile:
                     subscription.send_notification(content=topic, sender=topic.author.profile)
+
+
+@receiver(m2m_changed, sender=Article.authors.through)
+@disable_for_loaddata
+def add_author_article_event(sender, **kwargs):
+    """
+    Sent when there is a change in the many2many relationship between topic and tags
+    :param kwargs:  contains
+        - sender : the technical class representing the many2many relationship
+        - instance : the technical class representing the many2many relationship
+        - action : "pre_add", "post_add", ... action having sent the signal
+        - reverse : indicates which side of the relation is updated
+            (from what I understand, forward is from article to users, so when the users side is modified,
+            reverse is from users to article, so when the articles are modified)
+
+        Subscribes the authors to the UpdateSubscription, unsubscribe the leaving authors
+    """
+
+    article = kwargs.get('instance')
+    action = kwargs.get('action')
+    reverse = kwargs.get('reverse')
+
+    if action == 'post_add' and not reverse:
+        for user in article.authors.all():
+            existingUpdate = UpdateArticleSubscription.objects.get_existing(profile=user.profile, content_object=article)
+            if existingUpdate is None :
+                subscription = UpdateArticleSubscription(profile=user.profile, content_object=article)
+                subscription.save()
+
+            existingAnswer = ArticleAnswerSubscription.objects.get_existing(profile=user.profile, content_object=article)
+            if existingUpdate is None :
+                subscription = ArticleAnswerSubscription(profile=user.profile, content_object=article)
+                subscription.save()
+
+    if action == 'post_delete' and not reverse:
+        subscribers = UpdateArticleSubscription.objects.get_subscribers(content_object=article)
+        for user in subscribers:
+            if user not in article.authors.all() :
+                subscription = UpdateArticleSubscription.objects.get_existing(
+                    profile=user.profile, content_object=article)
+                subscription.deactivate()
 
 
 @receiver(post_save, sender=Post)

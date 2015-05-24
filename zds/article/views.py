@@ -726,12 +726,7 @@ def modify(request):
                     direct=False)
 
                 for author in article.authors.all():
-                    subscription = ArticleAnswerSubscription.objects.get_existing(author.profile, article)
-                    if subscription is None:
-                        subscription = ArticleAnswerSubscription(profile=author.profile, content_object=article)
-                        subscription.save()
-                    else:
-                        subscription.activate()
+                    subscription = ArticleAnswerSubscription.objects.get_or_create_active(author.profile, article)
 
                 return redirect(
                     article.get_absolute_url() +
@@ -900,15 +895,16 @@ def modify(request):
 
     if 'follow' in request.POST:
         resp = {}
-        subscription = ArticleAnswerSubscription.objects.get_existing(article.author.profile, article)
         if data["follow"] == "1":
-            if subscription is None:
-                subscription = ArticleAnswerSubscription(profile=article.author.profile, content_object=article)
-                subscription.save()
-            else:
-                subscription.activate()
+            subscription = ArticleAnswerSubscription.objects.get_or_create_active(article.author.profile, article)
+            #if subscription is None:
+            #    subscription = ArticleAnswerSubscription(profile=article.author.profile, content_object=article)
+            #    subscription.save()
+            #else:
+            #    subscription.activate()
             resp["follow"] = -1
         else:
+            subscription = ArticleAnswerSubscription.objects.get_existing(article.author.profile, article)
             if subscription is not None:
                 subscription.deactivate()
             resp["follow"] = 1

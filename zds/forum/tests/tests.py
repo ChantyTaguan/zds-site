@@ -12,7 +12,7 @@ from zds.member.factories import ProfileFactory, StaffProfileFactory
 from zds.utils.models import CommentLike, CommentDislike, Alert, Tag
 from django.core import mail
 
-from zds.forum.models import Post, Topic, TopicFollowed, TopicRead
+from zds.forum.models import Post, Topic, TopicRead
 from zds.forum.views import get_tag_by_title
 from zds.forum.models import get_topics, Forum
 
@@ -184,9 +184,6 @@ class ForumMemberTests(TestCase):
         TopicRead(topic=topic1, user=user1, post=post3).save()
         TopicRead(topic=topic1, user=user2, post=post3).save()
         TopicRead(topic=topic1, user=self.user, post=post3).save()
-        TopicFollowed(topic=topic1, user=user1, email=True).save()
-        TopicFollowed(topic=topic1, user=user2, email=True).save()
-        TopicFollowed(topic=topic1, user=self.user, email=True).save()
 
         # check if we send ane empty text
         result = self.client.post(
@@ -212,7 +209,6 @@ class ForumMemberTests(TestCase):
             follow=False)
 
         self.assertEqual(result.status_code, 302)
-        self.assertEquals(len(mail.outbox), 2)
 
         # check topic's number
         self.assertEqual(Topic.objects.all().count(), 1)
@@ -253,9 +249,6 @@ class ForumMemberTests(TestCase):
         TopicRead(topic=topic1, user=user1, post=post3).save()
         TopicRead(topic=topic1, user=user2, post=post3).save()
         TopicRead(topic=topic1, user=self.user, post=post3).save()
-        TopicFollowed(topic=topic1, user=user1, email=True).save()
-        TopicFollowed(topic=topic1, user=user2, email=True).save()
-        TopicFollowed(topic=topic1, user=self.user, email=True).save()
 
         # missing parameter
         result = self.client.post(

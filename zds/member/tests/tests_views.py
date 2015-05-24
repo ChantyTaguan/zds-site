@@ -9,9 +9,9 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from shutil import rmtree
+from zds.notification.models import TopicAnswerSubscription
 
 from zds.settings import BASE_DIR
-from zds.forum.models import TopicFollowed
 from zds.member.factories import ProfileFactory, StaffProfileFactory, NonAsciiProfileFactory, UserFactory
 from zds.mp.factories import PrivateTopicFactory, PrivatePostFactory
 from zds.member.models import Profile, KarmaNote, TokenForgotPassword
@@ -668,11 +668,14 @@ class MemberTests(TestCase):
         self.assertTrue(tester.user.is_superuser)
 
         # Now our tester is going to follow one post in every forum (3)
-        TopicFollowed(topic=topic1, user=tester.user).save()
-        TopicFollowed(topic=topic2, user=tester.user).save()
-        TopicFollowed(topic=topic3, user=tester.user).save()
+        sub1 = TopicAnswerSubscription(content_object=topic1, profile=tester)
+        sub1.save()
+        sub2 = TopicAnswerSubscription(content_object=topic2, profile=tester)
+        sub2.save()
+        sub3 = TopicAnswerSubscription(content_object=topic3, profile=tester)
+        sub3.save()
 
-        self.assertEqual(TopicFollowed.objects.filter(user=tester.user).count(), 3)
+        self.assertEqual(TopicAnswerSubscription.objects.filter(profile=tester, is_active=True).count(), 3)
 
         # retract all right, keep one group only and activate account
         result = self.client.post(
@@ -688,7 +691,7 @@ class MemberTests(TestCase):
         self.assertEqual(len(tester.user.groups.all()), 1)
         self.assertTrue(tester.user.is_active)
         self.assertFalse(tester.user.is_superuser)
-        self.assertEqual(TopicFollowed.objects.filter(user=tester.user).count(), 2)
+        self.assertEqual(TopicAnswerSubscription.objects.filter(profile=tester, is_active=True).count(), 2)
 
         # no groups specified
         result = self.client.post(
@@ -699,7 +702,7 @@ class MemberTests(TestCase):
             }, follow=False)
         self.assertEqual(result.status_code, 302)
         tester = Profile.objects.get(id=tester.id)  # refresh
-        self.assertEqual(TopicFollowed.objects.filter(user=tester.user).count(), 1)
+        self.assertEqual(TopicAnswerSubscription.objects.filter(profile=tester, is_active=True).count(), 1)
 
         # check that staff can't take away it's own super user rights
         result = self.client.post(

@@ -37,7 +37,7 @@ class Subscription(models.Model):
 
     def activate(self):
         """
-        Activates the subscription if it's inactive
+        Activates the subscription if it's inactive. Does nothing otherwise
         """
         if not self.is_active:
             self.is_active = True
@@ -45,7 +45,7 @@ class Subscription(models.Model):
 
     def activate_email(self):
         """
-        Acitvates the notifications by email
+        Acitvates the notifications by email (and the subscription itself if needed)
         """
         if not self.is_active or not self.by_email:
             self.is_active = True
@@ -69,10 +69,17 @@ class Subscription(models.Model):
             self.save()
 
     def set_last_notification(self, notification):
+        """
+        Replace last_notification by the one given
+        """
         self.last_notification = notification
         self.save()
 
     def send_email(self, notification):
+        """
+        Sends an email notification
+        """
+
         assert hasattr(self, "module")
 
         subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],self.module,notification.title)
@@ -98,12 +105,18 @@ class SingleNotificationMixin(object):
     """
     Mixin for the subscription that can only have one active notification at a time
     """
-
     def send_notification(self, content=None, send_email=True, sender=None):
+        """
+        Sends the notification about the given content
+        :param content:  the content the notification is about
+        :param sender: the user whose action triggered the notification
+        :param send_email : whether an email must be sent if the subscription by email is active
+        """
         assert hasattr(self, "get_notification_url")
         assert hasattr(self, "get_notification_title")
         assert hasattr(self, "send_email")
 
+        # If the last notification has not been read yet, no new notification is sent
         if self.last_notification is None or self.last_notification.is_read:
             notification = Notification(subscription=self, content_object=content, sender=sender)
             notification.url = self.get_notification_url(content)
@@ -115,12 +128,17 @@ class SingleNotificationMixin(object):
             if send_email & self.by_email:
                 self.send_email(notification)
         elif self.last_notification is not None:
-            # Update last notif if the new content is older (case of unreading)
+            # Update last notif if the new content is older (case of unreading answer)
             if not self.last_notification.is_read and self.last_notification.pubdate > content.pubdate:
                 self.last_notification.content_object = content
                 self.last_notification.save()
 
     def mark_notification_read(self):
+        """
+        Marks the notification of the subscription as read.
+        As there's only one active unread notification at all time,
+        no need for more precision
+        """
         if self.last_notification is not None:
             self.last_notification.is_read = True
             self.last_notification.save()
@@ -129,6 +147,13 @@ class SingleNotificationMixin(object):
 class MultipleNotificationsMixin(object):
 
     def send_notification(self, content=None, send_email=True, sender=None):
+        """
+        Sends the notification about the given content
+        :param content:  the content the notification is about
+        :param sender: the user whose action triggered the notification
+        :param send_email : whether an email must be sent if the subscription by email is active
+        """
+
         assert hasattr(self, "get_notification_url")
         assert hasattr(self, "get_notification_title")
         assert hasattr(self, "send_email")
@@ -143,6 +168,10 @@ class MultipleNotificationsMixin(object):
             self.send_email(notification)
 
     def mark_notification_read(self, content):
+        """
+        Marks the notification of the subscription as read.
+        :param content : the content whose notification has been read
+        """
         if content is None:
             raise Exception('Object content of notification must be defined')
 
@@ -161,8 +190,8 @@ class MultipleNotificationsMixin(object):
 class AnswerSubscription(Subscription):
     """
     Subscription to new answer, either in a topic, a article or a tutorial
+    NOT used directly, use one of its subtype
     """
-
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux réponses au {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
@@ -174,33 +203,52 @@ class AnswerSubscription(Subscription):
         return self.content_object.title
 
 
-
 class TopicAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
-
+    """
+    Subscription to new answer in a topic
+    """
     module = _(u'Forum')
     objects = SubscriptionManager()
 
+    def __unicode__(self):
+        return _(u'<Abonnement du membre "{0}" aux réponses au sujet #{1}>')\
+            .format(self.profile, self.object_id)
+
+
 
 class ArticleAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
+    """
+    Subscription to new answer (comment) in an article
+    """
     module = _(u'Article')
     objects = SubscriptionManager()
 
+    def __unicode__(self):
+        return _(u'<Abonnement du membre "{0}" aux réponses à l\'article #{1}>')\
+            .format(self.profile, self.object_id)
+
 
 class TutorialAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
+    """
+    Subscription to new answer (comment) in a tutorial
+    """
     module = _(u'Tutoriel')
     objects = SubscriptionManager()
+
+    def __unicode__(self):
+        return _(u'<Abonnement du membre "{0}" aux réponses au tutoriel #{1}>')\
+            .format(self.profile, self.object_id)
 
 
 class UpdateTutorialSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a tutorial
     """
-
     module = _(u'Tutoriel')
     objects = SubscriptionManager()
 
     def __unicode__(self):
-        return _(u'<Abonnement du membre "{0}" aux mises à jour du tutorial #{1}>')\
+        return _(u'<Abonnement du membre "{0}" aux mises à jour du tutoriel #{1}>')\
             .format(self.profile, self.object_id)
 
     def get_notification_url(self, tutorial):
@@ -217,7 +265,6 @@ class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
     """
     Subscription to update of a article
     """
-
     module = _(u'Article')
     objects = SubscriptionManager()
 
@@ -238,8 +285,8 @@ class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
 class PublicationSubscription(Subscription):
     """
     Subscription to the publication (public updates) of an article or tutorial
+    Do NOT use this directly, use one of its two subtypes
     """
-
     def __unicode__(self):
         return _(u'<Abonnement du membre "{0}" aux publications du {1} #{2}>')\
             .format(self.profile, self.content_type, self.object_id)
@@ -252,15 +299,27 @@ class PublicationSubscription(Subscription):
 
 
 class ArticlePublicationSubscription(PublicationSubscription, SingleNotificationMixin):
-
+    """
+    Subscription to the publication (public updates) of an article
+    """
     module = _(u'Article')
     objects = SubscriptionManager()
 
+    def __unicode__(self):
+        return _(u'<Abonnement du membre "{0}" aux publications de l\'article #{1}>')\
+            .format(self.profile, self.object_id)
+
 
 class TutorialPublicationSubscription(PublicationSubscription, SingleNotificationMixin):
-
+    """
+    Subscription to the publication (public updates) of an article
+    """
     module = _(u'Tutoriel')
     objects = SubscriptionManager()
+
+    def __unicode__(self):
+        return _(u'<Abonnement du membre "{0}" aux publications du tutoriel #{1}>')\
+            .format(self.profile, self.object_id)
 
 
 class NewTopicSubscription(Subscription, MultipleNotificationsMixin):

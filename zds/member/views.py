@@ -931,7 +931,7 @@ def settings_promote(request, user_pk):
             content_subscription_type = ContentType.objects.get(model="topic")
             subscription_list = TopicAnswerSubscription.objects\
                 .filter(profile=user.profile,
-                        content_type__pk=content_subscription_type.pk, active=True)
+                        content_type__pk=content_subscription_type.pk, is_active=True)
             for subscription in subscription_list:
                 if not subscription.content_object.forum.can_read(user):
                     subscription.deactivate()

@@ -435,20 +435,17 @@ def edit(request):
     data = request.POST
     resp = {}
     g_topic = get_object_or_404(Topic, pk=topic_pk)
-    subscription = TopicAnswerSubscription.objects.get_existing(request.user.profile, g_topic)
     if "follow" in data:
         if data["follow"] == "1":
-            if subscription is not None:
-                subscription.activate()
-            else:
-                subscription = TopicAnswerSubscription(profile=request.user.profile, content_object=g_topic)
-                subscription.save()
+            TopicAnswerSubscription.objects.get_or_create_active(request.user.profile, g_topic)
             resp["follow"] = -1
         else:
+            subscription = TopicAnswerSubscription.objects.get_existing(request.user.profile, g_topic)
             if subscription is not None:
                 subscription.deactivate()
             resp["follow"] = 1
     if "email" in data:
+        subscription = TopicAnswerSubscription.objects.get_existing(request.user.profile, g_topic)
         if data["email"] == "1":
             if subscription is not None:
                 subscription.activate_email()
@@ -870,7 +867,7 @@ def unread_post(request):
         else:
             t.delete()
 
-    signals.answer_unread.send(sender=post.topic.__class__, instance=post, user=request.user, answer_to=post.topic)
+    signals.answer_unread.send(sender=post.topic.__class__, instance=post, user=request.user)
 
     return redirect(reverse("zds.forum.views.details", args=[post.topic.forum.category.slug, post.topic.forum.slug]))
 
