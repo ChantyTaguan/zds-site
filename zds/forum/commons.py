@@ -86,7 +86,8 @@ class TopicEditMixin(object):
             for follower in followers:
                 if not forum.can_read(follower):
                     subscription = TopicAnswerSubscription.objects.get_existing(follower.profile, topic, is_active=True)
-                    subscription.deactivate()
+                    if subscription is not None:
+                        subscription.deactivate()
             messages.success(request,
                              _(u"Le sujet « {0} » a bien été déplacé dans « {1} ».").format(topic.title, forum.title))
         else:

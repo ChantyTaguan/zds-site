@@ -37,7 +37,8 @@ class SubscriptionManager(models.Manager):
             if not subscription.is_active:
                 subscription.activate()
         except ObjectDoesNotExist:
-            subscription = self.model(profile, content_object)
+            subscription = self.model(profile=profile, content_object=content_object)
+            subscription.save()
 
         return subscription
 
