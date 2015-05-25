@@ -143,12 +143,7 @@ def saved_topic_event(sender, **kwargs):
                 subscription.send_notification(content=topic, sender=topic.author.profile)
 
         # Follow the topic
-        subscription = TopicAnswerSubscription.objects.get_existing(topic.author.profile, topic)
-        if subscription is not None:
-            subscription.activate()
-        else:
-            subscription = TopicAnswerSubscription(profile=topic.author.profile, content_object=topic)
-            subscription.save()
+        TopicAnswerSubscription.objects.get_or_create_active(topic.author.profile, topic)
 
 
 @receiver(m2m_changed, sender=Topic.tags.through)
@@ -204,15 +199,9 @@ def add_author_article_event(sender, **kwargs):
 
     if action == 'post_add' and not reverse:
         for user in article.authors.all():
-            existingUpdate = UpdateArticleSubscription.objects.get_existing(profile=user.profile, content_object=article)
-            if existingUpdate is None :
-                subscription = UpdateArticleSubscription(profile=user.profile, content_object=article)
-                subscription.save()
+            UpdateArticleSubscription.objects.get_or_create_active(profile=user.profile, content_object=article)
+            ArticleAnswerSubscription.objects.get_or_create_active(profile=user.profile, content_object=article)
 
-            existingAnswer = ArticleAnswerSubscription.objects.get_existing(profile=user.profile, content_object=article)
-            if existingUpdate is None :
-                subscription = ArticleAnswerSubscription(profile=user.profile, content_object=article)
-                subscription.save()
 
     if action == 'post_delete' and not reverse:
         subscribers = UpdateArticleSubscription.objects.get_subscribers(content_object=article)
@@ -220,7 +209,8 @@ def add_author_article_event(sender, **kwargs):
             if user not in article.authors.all() :
                 subscription = UpdateArticleSubscription.objects.get_existing(
                     profile=user.profile, content_object=article)
-                subscription.deactivate()
+                if subscription is not None:
+                    subscription.deactivate()
 
 
 @receiver(post_save, sender=Post)
@@ -246,12 +236,7 @@ def answer_topic_event(sender, **kwargs):
                 subscription.send_notification(content=post, sender=post.author.profile)
 
         # Follow topic on answering
-        subscription = TopicAnswerSubscription.objects.get_existing(post.author.profile, post.topic)
-        if subscription is not None:
-            subscription.activate()
-        else:
-            subscription = TopicAnswerSubscription(profile=post.author.profile, content_object=post.topic)
-            subscription.save()
+        TopicAnswerSubscription.objects.get_or_create_active(post.author.profile, post.topic)
 
 
 @receiver(post_save, sender=Reaction)
@@ -276,12 +261,7 @@ def new_reaction_event(sender, **kwargs):
                 subscription.send_notification(content=reaction, sender=reaction.author.profile)
 
         # Follow article on answering
-        subscription = ArticleAnswerSubscription.objects.get_existing(reaction.author.profile, reaction.article)
-        if subscription is not None:
-            subscription.activate()
-        else:
-            subscription = ArticleAnswerSubscription(profile=reaction.author.profile, content_object=reaction.article)
-            subscription.save()
+        ArticleAnswerSubscription.objects.get_or_create_active(reaction.author.profile, reaction.article)
 
 
 @receiver(post_save, sender=Note)
@@ -306,9 +286,4 @@ def new_note_event(sender, **kwargs):
                 subscription.send_notification(content=note, sender=note.author.profile)
 
         # Follow tutorial on answering
-        subscription = TutorialAnswerSubscription.objects.get_existing(note.author.profile, note.tutorial)
-        if subscription is not None:
-            subscription.activate()
-        else:
-            subscription = TutorialAnswerSubscription(profile=note.author.profile, content_object=note.tutorial)
-            subscription.save()
+        TutorialAnswerSubscription.objects.get_or_create_active(note.author.profile, note.tutorial)

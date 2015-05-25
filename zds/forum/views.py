@@ -402,7 +402,8 @@ def move_topic(request):
     for follower in followers:
         if not forum.can_read(follower):
             subscription = TopicAnswerSubscription.objects.get_existing(follower.profile, topic, is_active=True)
-            subscription.deactivate()
+            if subscription is not None:
+                subscription.deactivate()
     messages.success(request,
                      u"Le sujet {0} a bien été déplacé dans {1}."
                      .format(topic.title,
@@ -1189,15 +1190,11 @@ def edit_notification_forum(request):
         content = get_object_or_404(Tag, pk=data["tag"])
 
     if "follow" in data:
-        subscription = NewTopicSubscription.objects.get_existing(request.user.profile, content)
         if data["follow"] == "1":
-            if subscription is not None:
-                subscription.activate()
-            else:
-                subscription = NewTopicSubscription(profile=request.user.profile, content_object=content)
-                subscription.save()
+            subscription = NewTopicSubscription.objects.get_or_create_active(request.user.profile, content)
             resp["follow"] = -1
         else:
+            subscription = NewTopicSubscription.objects.get_existing(request.user.profile, content)
             if subscription is not None:
                 subscription.deactivate()
             resp["follow"] = 1
