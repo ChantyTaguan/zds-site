@@ -49,7 +49,7 @@ from .forms import ArticleForm, ReactionForm, ActivJsForm
 from .models import Article, get_prev_article, get_next_article, Validation, \
     Reaction
 
-from zds.notification.signals import *
+from zds.notification import signals
 
 
 def index(request):
@@ -163,7 +163,7 @@ def view_online(request, article_pk, article_slug):
         article_version['antispam'] = article.antispam()
 
         # we mark this article read.
-        content_read.send(sender=article.__class__, instance=article, user=request.user)
+        signals.content_read.send(sender=article.__class__, instance=article, user=request.user)
 
     # Find all reactions of the article.
     reactions = Reaction.objects\
@@ -905,11 +905,11 @@ def modify(request):
         resp = {}
         if data["follow"] == "1":
             subscription = ArticleAnswerSubscription.objects.get_or_create_active(article.author.profile, article)
-            #if subscription is None:
-            #    subscription = ArticleAnswerSubscription(profile=article.author.profile, content_object=article)
-            #    subscription.save()
-            #else:
-            #    subscription.activate()
+            # if subscription is None:
+            #     subscription = ArticleAnswerSubscription(profile=article.author.profile, content_object=article)
+            #     subscription.save()
+            # else:
+            #     subscription.activate()
             resp["follow"] = -1
         else:
             subscription = ArticleAnswerSubscription.objects.get_existing(article.author.profile, article)

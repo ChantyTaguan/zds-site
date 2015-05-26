@@ -1,13 +1,10 @@
 # coding: utf-8
-from django.contrib.contenttypes.models import ContentType
-from django.core.urlresolvers import reverse
 
 from django.test import TestCase
 from zds.forum.factories import TopicFactory, CategoryFactory, ForumFactory, PostFactory
-from zds.forum.models import Topic
 
 from zds.member.factories import ProfileFactory
-from zds.notification.models import Subscription, TopicAnswerSubscription
+from zds.notification.models import TopicAnswerSubscription
 
 
 class SubscriptionTest(TestCase):

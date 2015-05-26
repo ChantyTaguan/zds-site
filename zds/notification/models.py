@@ -1,6 +1,5 @@
 # coding: utf-8
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.contrib.contenttypes.generic import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
@@ -82,8 +81,9 @@ class Subscription(models.Model):
 
         assert hasattr(self, "module")
 
-        subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'],self.module,notification.title)
-        from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],settings.ZDS_APP['site']['email_noreply'])
+        subject = _(u"{} - {} : {}").format(settings.ZDS_APP['site']['litteral_name'], self.module, notification.title)
+        from_email = _(u"{} <{}>").format(settings.ZDS_APP['site']['litteral_name'],
+                                          settings.ZDS_APP['site']['email_noreply'])
 
         receiver = self.profile.user
         context = {
@@ -215,7 +215,6 @@ class TopicAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
             .format(self.profile, self.object_id)
 
 
-
 class ArticleAnswerSubscription(AnswerSubscription, SingleNotificationMixin):
     """
     Subscription to new answer (comment) in an article
@@ -252,12 +251,9 @@ class UpdateTutorialSubscription(Subscription, SingleNotificationMixin):
             .format(self.profile, self.object_id)
 
     def get_notification_url(self, tutorial):
-        return reverse('zds.tutorial.views.history', args=[
-                    tutorial.pk,
-                    tutorial.slug,
-                ])
+        return reverse('zds.tutorial.views.history', args=[tutorial.pk, tutorial.slug, ])
 
-    def get_notification_url(self, tutorial):
+    def get_notification_title(self, tutorial):
         return tutorial.title
 
 
@@ -273,10 +269,7 @@ class UpdateArticleSubscription(Subscription, SingleNotificationMixin):
             .format(self.profile, self.object_id)
 
     def get_notification_url(self, article):
-        return reverse('zds.tutorial.views.history', args=[
-                    article.pk,
-                    article.slug,
-                ])
+        return reverse('zds.tutorial.views.history', args=[article.pk, article.slug, ])
 
     def get_notification_title(self, article):
         return article.title
@@ -294,7 +287,7 @@ class PublicationSubscription(Subscription):
     def get_notification_url(self, publication):
         return publication.get_absolute_url_online()
 
-    def get_notification_url(self, publication):
+    def get_notification_title(self, publication):
         return publication.title
 
 

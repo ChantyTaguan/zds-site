@@ -292,6 +292,7 @@ class Profile(models.Model):
         else:
             return False
 
+
 @receiver(models.signals.post_delete, sender=User)
 def auto_delete_token_on_unregistering(sender, instance, **kwargs):
     """

@@ -15,7 +15,6 @@ from zds.article.factories import ArticleFactory
 from zds.forum.factories import CategoryFactory, ForumFactory, TopicFactory, PostFactory
 from zds.member.factories import ProfileFactory, StaffProfileFactory
 from zds.member.models import TokenForgotPassword, TokenRegister, Profile
-from zds.notification.models import TopicAnswerSubscription
 from zds.tutorial.factories import MiniTutorialFactory
 from zds.gallery.factories import GalleryFactory, ImageFactory
 from zds.utils.models import Alert

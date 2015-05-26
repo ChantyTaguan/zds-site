@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-from django.contrib.contenttypes.models import ContentType
 
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from zds.forum.factories import CategoryFactory, ForumFactory, TopicFactory, PostFactory
-from zds.forum.models import Post
 from zds.member.factories import ProfileFactory
 from zds.notification.models import Notification
 

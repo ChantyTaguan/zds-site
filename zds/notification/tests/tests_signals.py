@@ -55,13 +55,13 @@ class NotificationForumTest(TestCase):
         content_type = ContentType.objects.get_for_model(topic)
 
         subscription = TopicAnswerSubscription.objects.get(object_id=topic.pk,
-                                                      content_type__pk=content_type.pk,
-                                                      profile=self.profile1)
+                                                           content_type__pk=content_type.pk,
+                                                           profile=self.profile1)
         self.assertEqual(subscription.is_active, True)
 
     def test_answer_topic(self):
         topic1 = TopicFactory(forum=self.forum11, author=self.profile2.user)
-        post1 = PostFactory(topic=topic1, author=self.profile2.user, position=1)
+        PostFactory(topic=topic1, author=self.profile2.user, position=1)
 
         result = self.client.post(
             reverse('post-new') + '?sujet={0}'.format(topic1.pk),
@@ -83,14 +83,14 @@ class NotificationForumTest(TestCase):
 
         # check that answerer has subscribed to the topic
         subscription = TopicAnswerSubscription.objects.get(object_id=topic1.pk,
-                                                content_type__pk=subscription_content_type.pk,
-                                                profile=self.profile1)
+                                                           content_type__pk=subscription_content_type.pk,
+                                                           profile=self.profile1)
         self.assertEqual(subscription.is_active, True)
 
     def test_topic_read(self):
 
         topic1 = TopicFactory(forum=self.forum11, author=self.profile2.user)
-        post1 = PostFactory(topic=topic1, author=self.profile2.user, position=1)
+        PostFactory(topic=topic1, author=self.profile2.user, position=1)
 
         result = self.client.post(
             reverse('post-new') + '?sujet={0}'.format(topic1.pk),
@@ -147,14 +147,12 @@ class NotificationForumTest(TestCase):
         forum_subscription.activate_email()
 
         self.assertEquals(len(mail.outbox), 0)
-        topic2 = TopicFactory(forum=self.forum11, author=self.profile2.user)
+        TopicFactory(forum=self.forum11, author=self.profile2.user)
         self.assertEquals(len(mail.outbox), 1)
 
     def test_new_topic_tag(self):
 
-        tag = TagFactory(title = "top")
-        tags = []
-        tags.append(tag)
+        tag = TagFactory(title="top")
 
         tag_subscription = NewTopicSubscription(profile=self.profile1, content_object=tag)
         tag_subscription.save()
@@ -171,7 +169,7 @@ class NotificationForumTest(TestCase):
         notifications = Notification.objects.filter(subscription=tag_subscription).all()
         self.assertEqual(notifications.count(), 2)
 
-        topic3 = TopicFactory(forum=self.forum11, author=self.profile2.user)
+        TopicFactory(forum=self.forum11, author=self.profile2.user)
         notifications = Notification.objects.filter(subscription=tag_subscription).all()
         self.assertEqual(notifications.count(), 2)
 
@@ -295,10 +293,7 @@ class NotificationArticleTest(TestCase):
         subscription1.activate_email()
 
         self.assertEquals(len(mail.outbox), 0)
-        reaction2 = ReactionFactory(
-            article=self.article,
-            author=self.profile2.user,
-            position=2)
+        ReactionFactory(article=self.article, author=self.profile2.user, position=2)
 
         notification = Notification.objects.get(subscription=subscription1)
         self.assertEqual(notification.is_read, False)

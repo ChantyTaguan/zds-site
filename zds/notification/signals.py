@@ -1,15 +1,13 @@
 from functools import wraps
-import django
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import post_save, pre_save, m2m_changed
+from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver, Signal
 from zds.article.models import Reaction, Article
 from zds.forum.models import Post, Topic
 
-from zds.notification.models import NewTopicSubscription, Notification, TopicAnswerSubscription, \
+from zds.notification.models import NewTopicSubscription, TopicAnswerSubscription, \
     TutorialAnswerSubscription, ArticleAnswerSubscription, TutorialPublicationSubscription, \
-    ArticlePublicationSubscription, UpdateTutorialSubscription, UpdateArticleSubscription
+    ArticlePublicationSubscription, UpdateArticleSubscription
 from zds.tutorial.models import Tutorial, Note
 
 
@@ -31,6 +29,7 @@ answer_unread = Signal(providing_args=["instance", "user"])
 
 # is sent when a content is read (topic, article or tutorial)
 content_read = Signal(providing_args=["instance", "user"])
+
 
 @receiver(answer_unread, sender=Topic)
 @disable_for_loaddata
@@ -204,11 +203,10 @@ def add_author_article_event(sender, **kwargs):
             UpdateArticleSubscription.objects.get_or_create_active(profile=user.profile, content_object=article)
             ArticleAnswerSubscription.objects.get_or_create_active(profile=user.profile, content_object=article)
 
-
     if action == 'post_delete' and not reverse:
         subscribers = UpdateArticleSubscription.objects.get_subscribers(content_object=article)
         for user in subscribers:
-            if user not in article.authors.all() :
+            if user not in article.authors.all():
                 subscription = UpdateArticleSubscription.objects.get_existing(
                     profile=user.profile, content_object=article)
                 if subscription is not None:
