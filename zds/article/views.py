@@ -214,7 +214,8 @@ def view_online(request, article_pk, article_slug):
     form = ReactionForm(article, request.user)
 
     return render(request, 'article/view.html', {
-        'article': article_version,
+        'article': article,
+        'article_version': article_version,
         'authors': article.authors,
         'tags': article.subcategory,
         'prev': get_prev_article(article),

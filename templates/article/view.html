@@ -10,14 +10,14 @@
 {% load interventions %}
 
 {% block title %}
-    {{ article.title }}
+    {{ article_version.title }}
 {% endblock %}
 
 
 
 {% block meta_image %}{% spaceless %}
-    {% if article.image %}
-        {{ article.image.article_illu.url }}
+    {% if article_version.image %}
+        {{ article_version.image.article_illu.url }}
     {% else %}
         {{ block.super }}
     {% endif %}
@@ -28,8 +28,8 @@
 {% block opengraph %}
     <meta property="og:type" content="article">
 
-    {% if article.pubdate %}
-        <meta property="og:article:published_time" content="{{ article.pubdate|date:"c" }}">
+    {% if article_version.pubdate %}
+        <meta property="og:article:published_time" content="{{ article_version.pubdate|date:"c" }}">
     {% endif %}
 
     <meta property="og:article:section" content="Articles">
@@ -41,7 +41,7 @@
 
 
 {% block breadcrumb %}
-    <li>{{ article.title }}</li>
+    <li>{{ article_version.title }}</li>
 {% endblock %}
 
 
@@ -53,22 +53,22 @@
 
 
 {% block headline %}
-    {% if article.licence %}
+    {% if article_version.licence %}
         <span class="license" itemprop="license">
-            {{ article.licence }}
+            {{ article_version.licence }}
         </span>
     {% endif %}
 
-    <h1 {% if article.image %}class="illu"{% endif %} itemprop="name">
-        {% if article.image %}
-            <img src="{{ article.image.article_illu.url }}" alt="" itemprop="thumbnailUrl">
+    <h1 {% if article_version.image %}class="illu"{% endif %} itemprop="name">
+        {% if article_version.image %}
+            <img src="{{ article_version.image.article_illu.url }}" alt="" itemprop="thumbnailUrl">
         {% endif %}
-        {{ article.title }}
+        {{ article_version.title }}
     </h1>
 
-    {% if article.description %}
+    {% if article_version.description %}
         <h2 class="subtitle">
-            {{ article.description }}
+            {{ article_version.description }}
         </h2>
     {% endif %}
 
@@ -84,8 +84,8 @@
 
     <span class="pubdate">
         {% trans "Publié " %}
-        <time datetime="{{ article.pubdate|date:"c" }}" pubdate="pubdate" itemprop="datePublished">
-            {{ article.pubdate|format_date }}
+        <time datetime="{{ article_version.pubdate|date:"c" }}" pubdate="pubdate" itemprop="datePublished">
+            {{ article_version.pubdate|format_date }}
         </time>
     </span>
 
@@ -112,11 +112,11 @@
 
 
 {% block content %}
-    {{ article.txt|safe }}
+    {{ article_version.txt|safe }}
 
     {% include "article/includes/pager.part.html" %}
 
-    {% include "article/includes/warn_typo.part.html" with article=article authors=authors%}
+    {% include "article/includes/warn_typo.part.html" with article=article_version authors=authors%}
 
 {% endblock %}
 
@@ -124,23 +124,23 @@
 
 {% block content_after %}
     <h3 class="comments-title" id="reactions">
-        {% if article.get_reaction_count > 0 %}
+        {% if article_version.get_reaction_count > 0 %}
             <span itemprop="commentCount">
-                {{ article.get_reaction_count }}
+                {{ article_version.get_reaction_count }}
             </span>
-            {% trans "réaction" %}{{ article.get_reaction_count|pluralize }}
+            {% trans "réaction" %}{{ article_version.get_reaction_count|pluralize }}
         {% else %}
             {% trans "Aucune réaction" %}
         {% endif %}
     </h3>
 
 
-    {% include "misc/pagination.part.html" with position="top" topic=article is_online=True anchor="reactions" %}
+    {% include "misc/pagination.part.html" with position="top" topic=article_version is_online=True anchor="reactions" %}
 
 
     {% for message in reactions %}
         {% captureas form_action %}
-            {% url "zds.article.views.answer" %}?article={{ article.pk }}
+            {% url "zds.article.views.answer" %}?article={{ article_version.pk }}
         {% endcaptureas %}
 
         {% captureas edit_link %}
@@ -148,7 +148,7 @@
         {% endcaptureas %}
 
         {% captureas cite_link %}
-            {% url "zds.article.views.answer" %}?article={{ article.pk }}&amp;cite={{ message.pk }}
+            {% url "zds.article.views.answer" %}?article={{ article_version.pk }}&amp;cite={{ message.pk }}
         {% endcaptureas %}
 
         {% captureas upvote_link %}
@@ -170,19 +170,19 @@
         {% endif %}
 
 
-        {% include "misc/message.part.html" with perms_change=perms.article.change_reaction topic=article comment_schema=True %}
+        {% include "misc/message.part.html" with perms_change=perms.article.change_reaction topic=article_version comment_schema=True %}
     {% endfor %}
 
 
-    {% include "misc/pagination.part.html" with position="bottom" topic=article is_online=True anchor="reactions" %}
+    {% include "misc/pagination.part.html" with position="bottom" topic=article_version is_online=True anchor="reactions" %}
 
 
 
     {% captureas form_action %}
-        {% url 'zds.article.views.answer' %}?article={{ article.pk }}
+        {% url 'zds.article.views.answer' %}?article={{ article_version.pk }}
     {% endcaptureas %}
 
-    {% include "misc/message_form.html" with member=user topic=article %}
+    {% include "misc/message_form.html" with member=user topic=article_version %}
 {% endblock %}
 
 
@@ -193,7 +193,7 @@
             <h3>{% trans "Validation" %}</h3>
             <ul>
                 <li>
-                    <a href="{{ article.get_absolute_url }}" class="ico-after offline blue">
+                    <a href="{{ article_version.get_absolute_url }}" class="ico-after offline blue">
                         {% trans "Version hors ligne" %}
                     </a>
                 </li>
@@ -208,13 +208,13 @@
                         <button type="submit" name="invalid-article">
                             {% trans "Confirmer" %}
                         </button>
-                        <input type="hidden" name="article" value="{{ article.pk }}">
+                        <input type="hidden" name="article" value="{{ article_version.pk }}">
                         <input type="hidden" name="version" value="{{ version }}">
                         {% csrf_token %}
                     </form>
                 </li>
                 <li>
-                    <a href="{% url "zds.article.views.history_validation" article.pk %}" class="ico-after history blue">
+                    <a href="{% url "zds.article.views.history_validation" article_version.pk %}" class="ico-after history blue">
                         {% trans "Historique de validation" %}
                     </a>
                 </li>
@@ -225,7 +225,7 @@
             <h3>{% trans "Gestion" %}</h3>
             <ul>
                 <li>
-                    <a href="{{ article.get_absolute_url }}" class="ico-after offline blue">
+                    <a href="{{ article_version.get_absolute_url }}" class="ico-after offline blue">
                         {% trans "Version hors ligne" %}
                     </a>
                 </li>
@@ -238,7 +238,7 @@
         <ul>
             <li>
                 <form action="{% url "zds.article.views.modify" %}" method="post">
-                    <input type="hidden" name="article" value="{{ article.pk }}">
+                    <input type="hidden" name="article" value="{{ article_version.pk }}">
                     <input type="hidden" name="nb" value="{{ nb }}">
                     <input type="hidden" name="page" value="{{ nb }}">
                     <input type="hidden" name="follow" value="{% if article|has_subscribed_new %}-1{% else %}1{% endif %}">
@@ -270,7 +270,7 @@
         <h3>{% trans "Télécharger" %}</h3>
         <ul>
             <li>
-                <a href="{% url "zds.article.views.download" %}?article={{ article.pk }}&online"
+                <a href="{% url "zds.article.views.download" %}?article={{ article_version.pk }}&online"
                    class="ico-after download blue"
                 >
                     {% trans "Archive" %}
@@ -279,5 +279,5 @@
         </ul>
     </div>
 
-    {% include "misc/social_buttons.part.html" with link=article.get_absolute_url_online text=article.title %}
+    {% include "misc/social_buttons.part.html" with link=article_version.get_absolute_url_online text=article_version.title %}
 {% endblock %}

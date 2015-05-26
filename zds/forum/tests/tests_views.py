@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from zds.forum.factories import CategoryFactory, ForumFactory, PostFactory, TopicFactory, TagFactory
-from zds.forum.models import TopicFollowed, Topic, Post
+from zds.forum.models import Topic, Post
 from zds.member.factories import ProfileFactory, StaffProfileFactory
 
 
@@ -366,54 +366,6 @@ class TopicEditTest(TestCase):
         response = self.client.post(reverse('topic-edit'), data, follow=False)
 
         self.assertEqual(302, response.status_code)
-
-    def test_success_edit_topic_follow(self):
-        profile = ProfileFactory()
-        category, forum = create_category()
-        topic = add_topic_in_a_forum(forum, profile)
-
-        self.assertTrue(self.client.login(username=profile.user.username, password='hostel77'))
-        data = {
-            'follow': '',
-            'topic': topic.pk
-        }
-        response = self.client.post(reverse('topic-edit'), data, follow=False)
-
-        self.assertEqual(302, response.status_code)
-        self.assertIsNotNone(TopicFollowed.objects.get(topic=topic, user=profile.user))
-
-        response = self.client.post(reverse('topic-edit'), data, follow=False)
-
-        self.assertEqual(302, response.status_code)
-        try:
-            TopicFollowed.objects.get(topic=topic, user=profile.user)
-            self.fail()
-        except TopicFollowed.DoesNotExist:
-            pass
-
-    def test_success_edit_topic_follow_email(self):
-        profile = ProfileFactory()
-        category, forum = create_category()
-        topic = add_topic_in_a_forum(forum, profile)
-
-        self.assertTrue(self.client.login(username=profile.user.username, password='hostel77'))
-        data = {
-            'email': '',
-            'topic': topic.pk
-        }
-        response = self.client.post(reverse('topic-edit'), data, follow=False)
-
-        self.assertEqual(302, response.status_code)
-        self.assertIsNotNone(TopicFollowed.objects.get(topic=topic, user=profile.user, email=True))
-
-        response = self.client.post(reverse('topic-edit'), data, follow=False)
-
-        self.assertEqual(302, response.status_code)
-        try:
-            TopicFollowed.objects.get(topic=topic, user=profile.user, email=True)
-            self.fail()
-        except TopicFollowed.DoesNotExist:
-            pass
 
     def test_failure_edit_topic_solved_not_author(self):
         profile = ProfileFactory()

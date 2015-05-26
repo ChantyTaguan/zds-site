@@ -199,6 +199,8 @@ def add_author_article_event(sender, **kwargs):
 
     if action == 'post_add' and not reverse:
         for user in article.authors.all():
+            if not hasattr(user, 'profile'):
+                continue
             UpdateArticleSubscription.objects.get_or_create_active(profile=user.profile, content_object=article)
             ArticleAnswerSubscription.objects.get_or_create_active(profile=user.profile, content_object=article)
 

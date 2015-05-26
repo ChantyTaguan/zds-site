@@ -155,10 +155,11 @@ class PostEditMixin(object):
         But, if there is only one post in the topic, we mark the topic unread but we don't create a notification.
         """
         topic_read = TopicRead.objects.filter(topic=post.topic, user=user).first()
-        if topic_read is None and post.position > 1:
-            unread = Post.objects.filter(topic=post.topic, position=(post.position - 1)).first()
-            topic_read = TopicRead(post=unread, topic=unread.topic, user=user)
-            topic_read.save()
+        if topic_read is None:
+            if post.position > 1:
+                unread = Post.objects.filter(topic=post.topic, position=(post.position - 1)).first()
+                topic_read = TopicRead(post=unread, topic=unread.topic, user=user)
+                topic_read.save()
         else:
             if post.position > 1:
                 unread = Post.objects.filter(topic=post.topic, position=(post.position - 1)).first()

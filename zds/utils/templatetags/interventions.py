@@ -93,7 +93,11 @@ def notif_url(notification):
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    subscription = TopicAnswerSubscription.objects.get_existing(get_current_user().profile, content_subscription, is_active=True)
+    if get_current_user().is_anonymous():
+        return False
+    subscription = TopicAnswerSubscription.objects.get_existing(get_current_user().profile,
+                                                                content_subscription,
+                                                                is_active=True)
     return subscription is not None
 
 @register.filter('has_suscribed_email_new')
