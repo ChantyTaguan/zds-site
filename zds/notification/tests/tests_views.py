@@ -135,3 +135,18 @@ class NotificationFollowForumEditTest(TestCase):
         self.assertEqual(302, response.status_code)
         subscription = NewTopicSubscription.objects.get_existing(self.profile, forum, is_active=True)
         self.assertIsNotNone(subscription)
+
+    def test_success_edit_follow_email_of_forum(self):
+        category, forum = create_category()
+
+        self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
+        data = {
+            self.param: forum.pk,
+            'email': '1'
+        }
+        response = self.client.post(reverse('follow-forum-edit'), data, follow=False)
+
+        self.assertEqual(302, response.status_code)
+        subscription = NewTopicSubscription.objects.get_existing(self.profile, forum, is_active=True)
+        self.assertIsNotNone(subscription)
+        self.assertTrue(subscription.by_email)

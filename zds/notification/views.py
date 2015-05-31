@@ -78,6 +78,9 @@ class NotificationFollowEdit(UpdateView, SingleObjectMixin, NotificationFollowMi
         if 'follow' in request.POST:
             response['follow'] = self.perform_follow(request.POST.get('follow') == '1',
                                                      self.subscription, self.object, request.user)
+        elif 'email' in request.POST:
+            response['email'] = self.perform_follow_by_email(request.POST.get('email') == '1',
+                                                             self.subscription, self.object, request.user)
 
         if request.is_ajax():
             return HttpResponse(json.dumps(response), content_type='application/json')

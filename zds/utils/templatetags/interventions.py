@@ -108,6 +108,17 @@ def has_subscribed_new_topic(content):
     return subscription is not None
 
 
+@register.filter('has_suscribed_email_new_topic')
+def has_suscribed_email_new_topic(content):
+    current_user = get_current_user()
+    if current_user.is_anonymous():
+        return False
+    subscription = NewTopicSubscription.objects.get_existing(current_user.profile, content, is_active=True)
+    if subscription is not None:
+        return subscription.by_email
+    return False
+
+
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
     if get_current_user().is_anonymous():
