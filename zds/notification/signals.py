@@ -110,13 +110,13 @@ def mark_topic_notifications_read(sender, **kwargs):
     # Subscription to the forum
     subscription = NewTopicSubscription.objects.get_existing(user.profile, topic.forum, is_active=True)
     if subscription is not None:
-        subscription.mark_notification_read(topic=topic)
+        subscription.mark_notification_read(content=topic)
 
     # Subscription to the tags
     for tag in topic.tags.all():
         subscription = NewTopicSubscription.objects.get_existing(user.profile, tag, is_active=True)
         if subscription is not None:
-            subscription.mark_notification_read(topic=topic)
+            subscription.mark_notification_read(content=topic)
 
 
 @receiver(post_save, sender=Topic)
