@@ -6,7 +6,7 @@ from django.test import TestCase
 from zds.forum.factories import create_category, add_topic_in_a_forum, TagFactory
 from zds.member.factories import ProfileFactory
 from zds.notification.factories import generate_x_notifications_on_topics
-from zds.notification.models import Notification, NewTopicSubscription
+from zds.notification.models import Notification, NewTopicSubscription, TopicAnswerSubscription
 
 
 class NotificationListViewTest(TestCase):
@@ -181,5 +181,36 @@ class NotificationFollowForumEditTest(TestCase):
 
         self.assertEqual(302, response.status_code)
         subscription = NewTopicSubscription.objects.get_existing(self.profile, tag, is_active=True)
+        self.assertIsNotNone(subscription)
+        self.assertTrue(subscription.by_email)
+
+    def test_success_edit_follow_of_topic(self):
+        category, forum = create_category()
+        topic = add_topic_in_a_forum(forum, self.profile)
+
+        self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
+        data = {
+            'topic': topic.pk,
+            'follow': '1'
+        }
+        response = self.client.post(reverse('follow-topic-edit'), data, follow=False)
+
+        self.assertEqual(302, response.status_code)
+        subscription = TopicAnswerSubscription.objects.get_existing(self.profile, topic, is_active=True)
+        self.assertIsNotNone(subscription)
+
+    def test_success_edit_follow_email_of_topic(self):
+        category, forum = create_category()
+        topic = add_topic_in_a_forum(forum, self.profile)
+
+        self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
+        data = {
+            'topic': topic.pk,
+            'email': '1'
+        }
+        response = self.client.post(reverse('follow-topic-edit'), data, follow=False)
+
+        self.assertEqual(302, response.status_code)
+        subscription = TopicAnswerSubscription.objects.get_existing(self.profile, topic, is_active=True)
         self.assertIsNotNone(subscription)
         self.assertTrue(subscription.by_email)

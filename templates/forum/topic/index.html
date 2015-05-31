@@ -173,57 +173,61 @@
     {% endif %}
 
     <li>
-        <form action="{% url 'topic-edit' %}" method="post">
+        <form action="{% url 'follow-topic-edit' %}" method="post">
+        {% with has_subscribed_new=topic|has_subscribed_new %}
             <input type="hidden" name="topic" value="{{ topic.pk }}">
             <input type="hidden" name="nb" value="{{ nb }}">
             <input type="hidden" name="page" value="{{ nb }}">
-            <input type="hidden" name="follow" value="{% if topic|has_subscribed_new %}-1{% else %}1{% endif %}">
+            <input type="hidden" name="follow" value="{% if has_subscribed_new %}-1{% else %}1{% endif %}">
             {% csrf_token %}
 
             <button
-                class="follow ico-after star {% if topic|has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                class="follow ico-after star {% if has_subscribed_new %}yellow{% else %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-topic"
                 data-content-on-click="
-                    {% if topic|has_subscribed_new %}
+                    {% if has_subscribed_new %}
                         {% trans "Suivre ce sujet" %}
                     {% else %}
                         {% trans "Ne plus suivre ce sujet" %}
                     {% endif %}
                 "
             >
-                {% if topic|has_subscribed_new %}
+                {% if has_subscribed_new %}
                     {% trans "Ne plus suivre ce sujet" %}
                 {% else %}
                     {% trans "Suivre ce sujet" %}
                 {% endif %}
             </button>
+        {% endwith %}
         </form>
     </li>
     <li>
-        <form action="{% url 'topic-edit' %}" method="post">
+        <form action="{% url 'follow-topic-edit' %}" method="post">
+        {% with has_subscribed_new=topic|has_suscribed_email_new %}
             <input type="hidden" name="topic" value="{{ topic.pk }}">
             <input type="hidden" name="nb" value="{{ nb }}">
             <input type="hidden" name="page" value="{{ nb }}">
-            <input type="hidden" name="email" value="1">
+            <input type="hidden" name="email" value="{% if has_subscribed_new %}-1{% else %}1{% endif %}">
             {% csrf_token %}
 
             <button
-                class="email ico-after {% if not topic|has_suscribed_email_new %}blue{% endif %}"
+                class="email ico-after {% if not has_subscribed_new %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-topic-by-email"
                 data-content-on-click="
-                    {% if topic|has_suscribed_email_new %}
+                    {% if has_subscribed_new %}
                         {% trans "Être notifié par courriel" %}
                     {% else %}
                         {% trans "Ne plus être notifié par courriel" %}
                     {% endif %}
                 "
             >
-                {% if topic|has_suscribed_email_new %}
+                {% if has_subscribed_new %}
                     {% trans "Ne plus être notifié par courriel" %}
                 {% else %}
                     {% trans "Être notifié par courriel" %}
                 {% endif %}
             </button>
+        {% endwith %}
         </form>
     </li>
 {% endblock %}

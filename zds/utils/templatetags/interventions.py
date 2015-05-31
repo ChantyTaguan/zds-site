@@ -121,9 +121,10 @@ def has_suscribed_email_new_topic(content):
 
 @register.filter('has_subscribed_new')
 def has_subscribed_new(content_subscription):
-    if get_current_user().is_anonymous():
+    current_user = get_current_user()
+    if current_user.is_anonymous():
         return False
-    subscription = TopicAnswerSubscription.objects.get_existing(get_current_user().profile,
+    subscription = TopicAnswerSubscription.objects.get_existing(current_user.profile,
                                                                 content_subscription,
                                                                 is_active=True)
     return subscription is not None
@@ -131,11 +132,15 @@ def has_subscribed_new(content_subscription):
 
 @register.filter('has_suscribed_email_new')
 def has_suscribed_email_new(content_subscription):
-    subscription = TopicAnswerSubscription(get_current_user().profile, content_subscription, is_active=True)
+    current_user = get_current_user()
+    if current_user.is_anonymous():
+        return False
+    subscription = TopicAnswerSubscription.objects.get_existing(current_user.profile,
+                                                                content_subscription,
+                                                                is_active=True)
     if subscription is not None:
         return subscription.by_email
-    else:
-        return False
+    return False
 
 
 @register.filter('has_subscribed_update_tutorial')
