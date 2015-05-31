@@ -23,27 +23,56 @@
 {% block sidebar_actions %}
     <li>
         <form action="{% url 'follow-tag-edit' %}" method="post">
+        {% with has_subscribed_new=tag|has_subscribed_new_topic %}
             <input type="hidden" name="tag" value="{{ tag.pk }}">
-            <input type="hidden" name="follow" value="{% if tag|has_subscribed_new %}-1{% else %}1{% endif %}">
+            <input type="hidden" name="follow" value="{% if has_subscribed_new %}-1{% else %}1{% endif %}">
             {% csrf_token %}
 
             <button
-                class="follow ico-after star {% if tag|has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                class="follow ico-after star {% if has_subscribed_new %}yellow{% else %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-tag"
                 data-content-on-click="
-                    {% if tag|has_subscribed_new %}
+                    {% if has_subscribed_new %}
                         {% trans "Suivre ce tag" %}
                     {% else %}
                         {% trans "Ne plus suivre ce tag" %}
                     {% endif %}
                 "
             >
-                {% if tag|has_subscribed_new %}
+                {% if has_subscribed_new %}
                     {% trans "Ne plus suivre ce tag" %}
                 {% else %}
                     {% trans "Suivre ce tag" %}
                 {% endif %}
             </button>
+        {% endwith %}
+        </form>
+    </li>
+    <li>
+        <form action="{% url 'follow-tag-edit' %}" method="post">
+        {% with has_subscribed_new=tag|has_suscribed_email_new_topic %}
+            <input type="hidden" name="tag" value="{{ tag.pk }}">
+            <input type="hidden" name="email" value="{% if has_subscribed_new %}-1{% else %}1{% endif %}">
+            {% csrf_token %}
+
+            <button
+                class="email ico-after {% if not has_subscribed_new %}blue{% endif %}"
+                type="submit" data-ajax-input="follow-tag-by-email"
+                data-content-on-click="
+                    {% if has_subscribed_new %}
+                        {% trans "Être notifié par courriel" %}
+                    {% else %}
+                        {% trans "Ne plus être notifié par courriel" %}
+                    {% endif %}
+                "
+            >
+                {% if has_subscribed_new %}
+                    {% trans "Ne plus être notifié par courriel" %}
+                {% else %}
+                    {% trans "Être notifié par courriel" %}
+                {% endif %}
+            </button>
+        {% endwith %}
         </form>
     </li>
 {% endblock %}

@@ -3,7 +3,7 @@
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from zds.forum.factories import create_category
+from zds.forum.factories import create_category, add_topic_in_a_forum, TagFactory
 from zds.member.factories import ProfileFactory
 from zds.notification.factories import generate_x_notifications_on_topics
 from zds.notification.models import Notification, NewTopicSubscription
@@ -76,8 +76,6 @@ class NotificationListViewTest(TestCase):
 
 class NotificationFollowForumEditTest(TestCase):
 
-    param = 'forum'
-
     def setUp(self):
         self.profile = ProfileFactory()
         login_check = self.client.login(username=self.profile.user.username, password='hostel77')
@@ -105,7 +103,7 @@ class NotificationFollowForumEditTest(TestCase):
 
         self.assertTrue(self.client.login(username=profile.user.username, password='hostel77'))
         data = {
-            self.param: 'abc',
+            'forum': 'abc',
         }
         response = self.client.post(reverse('follow-forum-edit'), data, follow=False)
 
@@ -116,7 +114,7 @@ class NotificationFollowForumEditTest(TestCase):
 
         self.assertTrue(self.client.login(username=profile.user.username, password='hostel77'))
         data = {
-            self.param: 99999,
+            'forum': 99999,
         }
         response = self.client.post(reverse('follow-forum-edit'), data, follow=False)
 
@@ -127,7 +125,7 @@ class NotificationFollowForumEditTest(TestCase):
 
         self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
         data = {
-            self.param: forum.pk,
+            'forum': forum.pk,
             'follow': '1'
         }
         response = self.client.post(reverse('follow-forum-edit'), data, follow=False)
@@ -141,12 +139,47 @@ class NotificationFollowForumEditTest(TestCase):
 
         self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
         data = {
-            self.param: forum.pk,
+            'forum': forum.pk,
             'email': '1'
         }
         response = self.client.post(reverse('follow-forum-edit'), data, follow=False)
 
         self.assertEqual(302, response.status_code)
         subscription = NewTopicSubscription.objects.get_existing(self.profile, forum, is_active=True)
+        self.assertIsNotNone(subscription)
+        self.assertTrue(subscription.by_email)
+
+    def test_success_edit_follow_of_tag(self):
+        category, forum = create_category()
+        topic = add_topic_in_a_forum(forum, self.profile)
+        tag = TagFactory()
+        topic.add_tags([tag.title])
+
+        self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
+        data = {
+            'tag': tag.pk,
+            'follow': '1'
+        }
+        response = self.client.post(reverse('follow-tag-edit'), data, follow=False)
+
+        self.assertEqual(302, response.status_code)
+        subscription = NewTopicSubscription.objects.get_existing(self.profile, tag, is_active=True)
+        self.assertIsNotNone(subscription)
+
+    def test_success_edit_follow_email_of_tag(self):
+        category, forum = create_category()
+        topic = add_topic_in_a_forum(forum, self.profile)
+        tag = TagFactory()
+        topic.add_tags([tag.title])
+
+        self.assertTrue(self.client.login(username=self.profile.user.username, password='hostel77'))
+        data = {
+            'tag': tag.pk,
+            'email': '1'
+        }
+        response = self.client.post(reverse('follow-tag-edit'), data, follow=False)
+
+        self.assertEqual(302, response.status_code)
+        subscription = NewTopicSubscription.objects.get_existing(self.profile, tag, is_active=True)
         self.assertIsNotNone(subscription)
         self.assertTrue(subscription.by_email)
