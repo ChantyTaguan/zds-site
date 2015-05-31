@@ -8,7 +8,8 @@ from django import template
 from zds.article.models import Reaction
 from zds.forum.models import never_read as never_read_topic, Post
 from zds.mp.models import PrivateTopic
-from zds.notification.models import Notification, UpdateTutorialSubscription, TopicAnswerSubscription
+from zds.notification.models import Notification, UpdateTutorialSubscription, TopicAnswerSubscription, \
+    NewTopicSubscription
 from zds.tutorial.models import Note
 from zds.utils import get_current_user
 from zds.utils.models import Alert
@@ -96,6 +97,15 @@ def notif_username(notification):
 @register.filter('notif_url')
 def notif_url(notification):
     return notification.url
+
+
+@register.filter('has_subscribed_new_topic')
+def has_subscribed_new_topic(content):
+    current_user = get_current_user()
+    if current_user.is_anonymous():
+        return False
+    subscription = NewTopicSubscription.objects.get_existing(current_user.profile, content, is_active=True)
+    return subscription is not None
 
 
 @register.filter('has_subscribed_new')

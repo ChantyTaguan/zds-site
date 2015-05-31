@@ -22,7 +22,7 @@
 
 {% block sidebar_actions %}
     <li>
-        <form action="{% url "zds.forum.views.edit_notification_forum" %}" method="post">
+        <form action="{% url 'follow-tag-edit' %}" method="post">
             <input type="hidden" name="tag" value="{{ tag.pk }}">
             <input type="hidden" name="follow" value="{% if tag|has_subscribed_new %}-1{% else %}1{% endif %}">
             {% csrf_token %}

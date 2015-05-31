@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import json
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,25 +16,21 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
+from django.views.decorators.http import require_POST
+from django.utils.translation import ugettext_lazy as _
+from haystack.inputs import AutoQuery
+from haystack.query import SearchQuerySet
 
 from zds.forum.forms import TopicForm, PostForm, MoveTopicForm
 from zds.forum.models import Category, Forum, Topic, Post, never_read, mark_read
 from zds.forum.commons import TopicEditMixin, PostEditMixin, SinglePostObjectMixin
 from zds.member.decorator import can_write_and_read_now
-from zds.notification.models import NewTopicSubscription
-from django.views.decorators.http import require_POST
-
-from django.utils.translation import ugettext_lazy as _
-from haystack.inputs import AutoQuery
-from haystack.query import SearchQuerySet
-
 from zds.utils import slugify
 from zds.utils.forums import create_topic, send_post, CreatePostView
 from zds.utils.mixins import FilterMixin
 from zds.utils.models import Alert, Tag
 from zds.utils.mps import send_mp
 from zds.utils.paginator import paginator_range, ZdSPagingListView
-
 from zds.notification import signals
 
 
@@ -674,35 +671,3 @@ def complete_topic(request):
     the_data = json.dumps(suggestions)
 
     return HttpResponse(the_data, content_type='application/json')
-
-
-@login_required
-@require_POST
-def edit_notification_forum(request):
-    """
-    Activate or deactivate the notifications for new topics in this forum
-    """
-
-    data = request.POST
-    resp = {}
-    if "forum" in data:
-        content = get_object_or_404(Forum, pk=data["forum"])
-        if not content.can_read(request.user):
-            raise PermissionDenied
-    elif "tag" in data:
-        content = get_object_or_404(Tag, pk=data["tag"])
-
-    if "follow" in data:
-        if data["follow"] == "1":
-            subscription = NewTopicSubscription.objects.get_or_create_active(request.user.profile, content)
-            resp["follow"] = -1
-        else:
-            subscription = NewTopicSubscription.objects.get_existing(request.user.profile, content)
-            if subscription is not None:
-                subscription.deactivate()
-            resp["follow"] = 1
-
-    if request.is_ajax():
-        return HttpResponse(json.dumps(resp), content_type='application/json')
-    else:
-        return redirect(content.get_absolute_url())
