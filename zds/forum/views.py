@@ -258,12 +258,7 @@ class TopicEdit(UpdateView, SingleObjectMixin, TopicEditMixin):
             return render(request, self.template_name, {'topic': self.object, 'form': form})
 
         response = {}
-        if 'follow' in request.POST:
-            response['follow'] = self.perform_follow(request.POST.get('follow') == '1', self.object, request.user)
-        elif 'email' in request.POST:
-            response['email'] = self.perform_follow_by_email(request.POST.get('email') == '1',
-                                                             self.object, request.user)
-        elif 'solved' in request.POST:
+        if 'solved' in request.POST:
             response['solved'] = self.perform_solve_or_unsolve(self.request.user, self.object)
         elif 'lock' in request.POST:
             self.perform_lock(self.object, request)

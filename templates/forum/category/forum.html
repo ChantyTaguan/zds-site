@@ -73,58 +73,56 @@
 
 {% block sidebar_actions %}
     <li>
+    {% with subscribe_array=forum|has_subscribed_new_topic %}
         <form action="{% url 'follow-forum-edit' %}" method="post">
-        {% with has_subscribed_new=forum|has_subscribed_new_topic %}
             <input type="hidden" name="forum" value="{{ forum.pk }}">
-            <input type="hidden" name="follow" value="{% if has_subscribed_new %}-1{% else %}1{% endif %}">
+            <input type="hidden" name="follow" value="{% if subscribe_array.has_subscribed_new %}-1{% else %}1{% endif %}">
             {% csrf_token %}
 
             <button
-                class="follow ico-after star {% if has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                class="follow ico-after star {% if subscribe_array.has_subscribed_new %}yellow{% else %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-forum"
                 data-content-on-click="
-                    {% if has_subscribed_new %}
+                    {% if subscribe_array.has_subscribed_new %}
                         {% trans "Suivre ce forum" %}
                     {% else %}
                         {% trans "Ne plus suivre ce forum" %}
                     {% endif %}
                 "
             >
-                {% if has_subscribed_new %}
+                {% if subscribe_array.has_subscribed_new %}
                     {% trans "Ne plus suivre ce forum" %}
                 {% else %}
                     {% trans "Suivre ce forum" %}
                 {% endif %}
             </button>
-        {% endwith %}
         </form>
     </li>
     <li>
         <form action="{% url 'follow-forum-edit' %}" method="post">
-        {% with has_subscribed_new=forum|has_suscribed_email_new_topic %}
             <input type="hidden" name="forum" value="{{ forum.pk }}">
-            <input type="hidden" name="email" value="{% if has_subscribed_new %}-1{% else %}1{% endif %}">
+            <input type="hidden" name="email" value="{% if subscribe_array.has_subscribed_new_email %}-1{% else %}1{% endif %}">
             {% csrf_token %}
 
             <button
-                class="email ico-after {% if not has_subscribed_new %}blue{% endif %}"
+                class="email ico-after {% if not subscribe_array.has_subscribed_new_email %}blue{% endif %}"
                 type="submit" data-ajax-input="follow-forum-by-email"
                 data-content-on-click="
-                    {% if has_subscribed_new %}
+                    {% if subscribe_array.has_subscribed_new_email %}
                         {% trans "Être notifié par courriel" %}
                     {% else %}
                         {% trans "Ne plus être notifié par courriel" %}
                     {% endif %}
                 "
             >
-                {% if has_subscribed_new %}
+                {% if subscribe_array.has_subscribed_new_email %}
                     {% trans "Ne plus être notifié par courriel" %}
                 {% else %}
                     {% trans "Être notifié par courriel" %}
                 {% endif %}
             </button>
-        {% endwith %}
         </form>
+    {% endwith %}
     </li>
 {% endblock %}
 
