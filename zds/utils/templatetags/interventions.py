@@ -119,8 +119,8 @@ def has_suscribed_email_new_topic(content):
     return False
 
 
-@register.filter('has_subscribed_new')
-def has_subscribed_new(content_subscription):
+@register.filter('has_subscribed_answer_topic')
+def has_subscribed_answer_topic(content_subscription):
     current_user = get_current_user()
     if current_user.is_anonymous():
         return False
@@ -130,8 +130,8 @@ def has_subscribed_new(content_subscription):
     return subscription is not None
 
 
-@register.filter('has_suscribed_email_new')
-def has_suscribed_email_new(content_subscription):
+@register.filter('has_suscribed_email_answer_topic')
+def has_suscribed_email_answer_topic(content_subscription):
     current_user = get_current_user()
     if current_user.is_anonymous():
         return False

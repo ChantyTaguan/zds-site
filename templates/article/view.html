@@ -238,29 +238,31 @@
         <ul>
             <li>
                 <form action="{% url "zds.article.views.modify" %}" method="post">
+                {% with has_subscribed_answer=article|has_subscribed_answer_topic %}
                     <input type="hidden" name="article" value="{{ article_version.pk }}">
                     <input type="hidden" name="nb" value="{{ nb }}">
                     <input type="hidden" name="page" value="{{ nb }}">
-                    <input type="hidden" name="follow" value="{% if article|has_subscribed_new %}-1{% else %}1{% endif %}">
+                    <input type="hidden" name="follow" value="{% if has_subscribed_answer %}-1{% else %}1{% endif %}">
                     {% csrf_token %}
 
                     <button
-                        class="follow ico-after star {% if article|has_subscribed_new %}yellow{% else %}blue{% endif %}"
+                        class="follow ico-after star {% if has_subscribed_answer %}yellow{% else %}blue{% endif %}"
                         type="submit" data-ajax-input="follow-article"
                         data-content-on-click="
-                            {% if article|has_subscribed_new %}
+                            {% if has_subscribed_answer %}
                                 {% trans "Suivre cet article" %}
                             {% else %}
                                 {% trans "Ne plus suivre cet article" %}
                             {% endif %}
                         "
                     >
-                        {% if article|has_subscribed_new %}
+                        {% if has_subscribed_answer %}
                             {% trans "Ne plus suivre cet article" %}
                         {% else %}
                             {% trans "Suivre cet article" %}
                         {% endif %}
                     </button>
+                {% endwith %}
                 </form>
             </li>
         </ul>
