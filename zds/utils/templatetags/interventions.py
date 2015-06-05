@@ -103,44 +103,30 @@ def notif_url(notification):
 def has_subscribed_new_topic(content):
     current_user = get_current_user()
     if current_user.is_anonymous():
-        return False
+        return {'has_subscribed_new': False, 'has_subscribed_new_email': False}
     subscription = NewTopicSubscription.objects.get_existing(current_user.profile, content, is_active=True)
-    return subscription is not None
-
-
-@register.filter('has_suscribed_email_new_topic')
-def has_suscribed_email_new_topic(content):
-    current_user = get_current_user()
-    if current_user.is_anonymous():
-        return False
-    subscription = NewTopicSubscription.objects.get_existing(current_user.profile, content, is_active=True)
+    data = {'has_subscribed_new': subscription is not None}
     if subscription is not None:
-        return subscription.by_email
-    return False
+        data['has_subscribed_new_email'] = subscription.by_email
+    else:
+        data['has_subscribed_new_email'] = False
+    return data
 
 
 @register.filter('has_subscribed_answer_topic')
 def has_subscribed_answer_topic(content_subscription):
     current_user = get_current_user()
     if current_user.is_anonymous():
-        return False
+        return {'has_subscribed_answer': False, 'has_subscribed_answer_email': False}
     subscription = TopicAnswerSubscription.objects.get_existing(current_user.profile,
                                                                 content_subscription,
                                                                 is_active=True)
-    return subscription is not None
-
-
-@register.filter('has_suscribed_email_answer_topic')
-def has_suscribed_email_answer_topic(content_subscription):
-    current_user = get_current_user()
-    if current_user.is_anonymous():
-        return False
-    subscription = TopicAnswerSubscription.objects.get_existing(current_user.profile,
-                                                                content_subscription,
-                                                                is_active=True)
+    data = {'has_subscribed_answer': subscription is not None}
     if subscription is not None:
-        return subscription.by_email
-    return False
+        data['has_subscribed_answer_email'] = subscription.by_email
+    else:
+        data['has_subscribed_answer_email'] = False
+    return data
 
 
 @register.filter('has_subscribed_update_tutorial')
