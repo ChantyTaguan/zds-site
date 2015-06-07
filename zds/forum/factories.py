@@ -49,22 +49,3 @@ class PostFactory(factory.DjangoModelFactory):
             topic.last_message = post
             topic.save()
         return post
-
-
-def create_category(group=None):
-    category = CategoryFactory(position=1)
-    forum = ForumFactory(category=category, position_in_category=1)
-    if group is not None:
-        forum.group.add(group)
-        forum.save()
-    return category, forum
-
-
-def add_topic_in_a_forum(forum, profile, is_sticky=False, is_solved=False, is_locked=False):
-    topic = TopicFactory(forum=forum, author=profile.user)
-    topic.is_sticky = is_sticky
-    topic.is_solved = is_solved
-    topic.is_locked = is_locked
-    topic.save()
-    PostFactory(topic=topic, author=profile.user, position=1)
-    return topic

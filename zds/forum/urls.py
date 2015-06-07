@@ -51,6 +51,8 @@ urlpatterns = patterns('',
                        url(r'^$', CategoriesForumsListView.as_view(), name='cats-forums-list'),
 
                        # Forum details
+                       url(r'^editer/notification/$',
+                           'zds.forum.views.edit_notification_forum'),
                        url(r'^(?P<cat_slug>.+)/(?P<forum_slug>.+)/$', ForumTopicsListView.as_view(),
                            name='forum-topics-list'),
 

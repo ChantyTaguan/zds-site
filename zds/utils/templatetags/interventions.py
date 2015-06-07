@@ -8,8 +8,7 @@ from django import template
 from zds.article.models import Reaction
 from zds.forum.models import never_read as never_read_topic, Post
 from zds.mp.models import PrivateTopic
-from zds.notification.models import Notification, UpdateTutorialSubscription, TopicAnswerSubscription, \
-    NewTopicSubscription
+from zds.notification.models import Notification, UpdateTutorialSubscription, TopicAnswerSubscription
 from zds.tutorial.models import Note
 from zds.utils import get_current_user
 from zds.utils.models import Alert
@@ -99,34 +98,23 @@ def notif_url(notification):
     return notification.url
 
 
-@register.filter('has_subscribed_new_topic')
-def has_subscribed_new_topic(content):
-    current_user = get_current_user()
-    if current_user.is_anonymous():
-        return {'has_subscribed_new': False, 'has_subscribed_new_email': False}
-    subscription = NewTopicSubscription.objects.get_existing(current_user.profile, content, is_active=True)
-    data = {'has_subscribed_new': subscription is not None}
-    if subscription is not None:
-        data['has_subscribed_new_email'] = subscription.by_email
-    else:
-        data['has_subscribed_new_email'] = False
-    return data
-
-
-@register.filter('has_subscribed_answer_topic')
-def has_subscribed_answer_topic(content_subscription):
-    current_user = get_current_user()
-    if current_user.is_anonymous():
-        return {'has_subscribed_answer': False, 'has_subscribed_answer_email': False}
-    subscription = TopicAnswerSubscription.objects.get_existing(current_user.profile,
+@register.filter('has_subscribed_new')
+def has_subscribed_new(content_subscription):
+    if get_current_user().is_anonymous():
+        return False
+    subscription = TopicAnswerSubscription.objects.get_existing(get_current_user().profile,
                                                                 content_subscription,
                                                                 is_active=True)
-    data = {'has_subscribed_answer': subscription is not None}
+    return subscription is not None
+
+
+@register.filter('has_suscribed_email_new')
+def has_suscribed_email_new(content_subscription):
+    subscription = TopicAnswerSubscription(get_current_user().profile, content_subscription, is_active=True)
     if subscription is not None:
-        data['has_subscribed_answer_email'] = subscription.by_email
+        return subscription.by_email
     else:
-        data['has_subscribed_answer_email'] = False
-    return data
+        return False
 
 
 @register.filter('has_subscribed_update_tutorial')

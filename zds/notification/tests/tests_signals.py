@@ -27,10 +27,16 @@ class NotificationForumTest(TestCase):
         self.profile2 = ProfileFactory()
 
         self.category1 = CategoryFactory(position=1)
-        self.forum11 = ForumFactory(category=self.category1, position_in_category=1)
-        self.forum12 = ForumFactory(category=self.category1, position_in_category=2)
+        self.forum11 = ForumFactory(
+            category=self.category1,
+            position_in_category=1)
+        self.forum12 = ForumFactory(
+            category=self.category1,
+            position_in_category=2)
 
-        log = self.client.login(username=self.profile1.user.username, password='hostel77')
+        log = self.client.login(
+            username=self.profile1.user.username,
+            password='hostel77')
         self.assertEqual(log, True)
 
     def test_creation_topic(self):
@@ -52,32 +58,6 @@ class NotificationForumTest(TestCase):
                                                            content_type__pk=content_type.pk,
                                                            profile=self.profile1)
         self.assertEqual(subscription.is_active, True)
-
-    def test_mark_read_a_topic_from_view_list_posts(self):
-        topic = TopicFactory(forum=self.forum11, author=self.profile2.user)
-        PostFactory(topic=topic, author=self.profile2.user, position=1)
-
-        # Follow the topic.
-        existing = TopicAnswerSubscription.objects.get_existing(self.profile1, topic)
-        self.assertIsNone(existing)
-        subscription = TopicAnswerSubscription.objects.get_or_create_active(self.profile1, topic)
-
-        # Creates a new post in the topic to generate a new notification.
-        PostFactory(topic=topic, author=self.profile2.user, position=1)
-        content_notification_type = ContentType.objects.get_for_model(topic.last_message)
-        notification = Notification.objects.get(subscription=subscription,
-                                                content_type__pk=content_notification_type.pk,
-                                                object_id=topic.last_message.pk, is_read=False)
-        self.assertIsNotNone(notification)
-
-        response = self.client.get(reverse('topic-posts-list', args=[topic.pk, topic.slug()]))
-        self.assertEqual(response.status_code, 200)
-
-        # Checks that the notification is reading now.
-        notification = Notification.objects.get(subscription=subscription,
-                                                content_type__pk=content_notification_type.pk,
-                                                object_id=topic.last_message.pk, is_read=True)
-        self.assertIsNotNone(notification)
 
     def test_answer_topic(self):
         topic1 = TopicFactory(forum=self.forum11, author=self.profile2.user)
