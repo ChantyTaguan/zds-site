@@ -10,6 +10,7 @@ from zds.tutorialv2.views.views_contents import DisplayContent, CreateContent, E
 
 from zds.tutorialv2.views.views_published import SendNoteFormView, UpvoteReaction, DownvoteReaction, UpdateNoteView, \
     HideReaction, ShowReaction, SendNoteAlert, SolveNoteAlert
+from zds.notification import receivers
 
 urlpatterns = patterns('',
                        url(r'^tutoriels/(?P<pk>\d+)/$',

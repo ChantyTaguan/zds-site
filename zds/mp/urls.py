@@ -5,6 +5,7 @@ from django.conf.urls import patterns, url
 from zds.mp.views import PrivateTopicList, PrivatePostList, PrivateTopicNew, PrivateTopicAddParticipant, \
     PrivateTopicLeaveDetail, PrivateTopicLeaveList, \
     PrivatePostAnswer, PrivatePostEdit, PrivateTopicEdit
+from zds.notification import receivers
 
 
 urlpatterns = patterns('',

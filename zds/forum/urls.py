@@ -6,6 +6,7 @@ from . import feeds
 from zds.forum.views import CategoriesForumsListView, CategoryForumsDetailView, ForumTopicsListView, \
     TopicPostsListView, TopicNew, TopicEdit, FindTopic, FindTopicByTag, PostNew, PostEdit, \
     PostUseful, PostUnread, PostLike, PostDisLike, FindPost
+from zds.notification import receivers
 
 
 urlpatterns = patterns('',

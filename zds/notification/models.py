@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from zds.forum.models import TopicRead, Topic
+from zds.notification import signals
 from zds.notification.managers import TopicFollowedManager
 from zds.utils import get_current_user
 
@@ -111,3 +112,4 @@ def mark_read(topic, user=None):
         else:
             current_topic_read.post = topic.last_message
         current_topic_read.save()
+        signals.content_read.send(sender=topic.__class__, instance=topic, user=user)

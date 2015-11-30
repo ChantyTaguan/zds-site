@@ -7,12 +7,12 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models
 from zds.mp.managers import PrivateTopicManager, PrivatePostManager
+from zds.notification import signals
 
 from zds.utils import get_current_user, slugify
 
 
 class PrivateTopic(models.Model):
-
     """
     Topic private, containing private posts.
     """
@@ -73,9 +73,9 @@ class PrivateTopic(models.Model):
         :return: PrivateTopic object last answer (PrivatePost)
         :rtype: PrivatePost object or None
         """
-        last_post = PrivatePost.objects\
-            .filter(privatetopic__pk=self.pk)\
-            .order_by('-position_in_topic')\
+        last_post = PrivatePost.objects \
+            .filter(privatetopic__pk=self.pk) \
+            .order_by('-position_in_topic') \
             .first()
 
         # If the last post is the first post, there is no answer in the topic (only initial post)
@@ -91,9 +91,9 @@ class PrivateTopic(models.Model):
         :return: PrivateTopic object first answer (PrivatePost)
         :rtype: PrivatePost object or None
         """
-        return PrivatePost.objects\
-            .filter(privatetopic=self)\
-            .order_by('position_in_topic')\
+        return PrivatePost.objects \
+            .filter(privatetopic=self) \
+            .order_by('position_in_topic') \
             .first()
 
     def last_read_post(self, user=None):
@@ -110,8 +110,8 @@ class PrivateTopic(models.Model):
             user = get_current_user()
 
         try:
-            post = PrivateTopicRead.objects\
-                .select_related()\
+            post = PrivateTopicRead.objects \
+                .select_related() \
                 .filter(privatetopic=self, user=user)
             if len(post) == 0:
                 return self.first_post()
@@ -134,9 +134,9 @@ class PrivateTopic(models.Model):
             user = get_current_user()
 
         try:
-            last_post = PrivateTopicRead.objects\
-                .select_related()\
-                .filter(privatetopic=self, user=user)\
+            last_post = PrivateTopicRead.objects \
+                .select_related() \
+                .filter(privatetopic=self, user=user) \
                 .latest('privatepost__position_in_topic').privatepost
 
             next_post = PrivatePost.objects.filter(
@@ -173,7 +173,6 @@ class PrivateTopic(models.Model):
 
 
 class PrivatePost(models.Model):
-
     """A private post written by an user."""
 
     class Meta:
@@ -211,7 +210,6 @@ class PrivatePost(models.Model):
 
 
 class PrivateTopicRead(models.Model):
-
     """
     Small model which keeps track of the user viewing private topics.
 
@@ -251,8 +249,8 @@ def never_privateread(privatetopic, user=None):
     if user is None:
         user = get_current_user()
 
-    return PrivateTopicRead.objects\
-        .filter(privatepost=privatetopic.last_message, privatetopic=privatetopic, user=user)\
+    return PrivateTopicRead.objects \
+        .filter(privatepost=privatetopic.last_message, privatetopic=privatetopic, user=user) \
         .count() == 0
 
 
@@ -271,7 +269,14 @@ def mark_read(privatetopic, user=None):
     if user is None:
         user = get_current_user()
 
-    # Delete the old PrivateTopic and add the new as the last read
-    PrivateTopicRead.objects.filter(privatetopic=privatetopic, user=user).delete()
-    topic = PrivateTopicRead(privatepost=privatetopic.last_message, privatetopic=privatetopic, user=user)
+    # Fetch the privateTopicRead concerning the given privateTopic and given (or current) user
+    # Set the last read post as the current last post and save
+    try:
+        topic = PrivateTopicRead.objects.filter(privatetopic=privatetopic, user=user).get()
+        topic.privatepost = privatetopic.last_message
+    # Or create it if it does not exists yet
+    except PrivateTopicRead.DoesNotExist:
+        topic = PrivateTopicRead(privatepost=privatetopic.last_message, privatetopic=privatetopic, user=user)
+
     topic.save()
+    signals.content_read.send(sender=privatetopic.__class__, instance=privatetopic, user=user)
