@@ -14,13 +14,13 @@ from django.test.utils import override_settings
 from django.utils.encoding import smart_text
 
 from zds.forum.factories import ForumFactory, CategoryFactory
-from zds.forum.models import Topic, Post
+from zds.forum.models import Topic, Post, TopicRead
 from zds.gallery.factories import UserGalleryFactory
 from zds.gallery.models import GALLERY_WRITE, UserGallery, Gallery
 from zds.gallery.models import Image
 from zds.member.factories import ProfileFactory, StaffProfileFactory, UserFactory
 from zds.mp.models import PrivateTopic
-from zds.notification.models import TopicRead, TopicFollowed
+from zds.notification.models import TopicFollowed
 from zds.settings import BASE_DIR
 from zds.tutorialv2.factories import PublishableContentFactory, ContainerFactory, ExtractFactory, LicenceFactory, \
     SubCategoryFactory, PublishedContentFactory, tricky_text_content, BetaContentFactory
